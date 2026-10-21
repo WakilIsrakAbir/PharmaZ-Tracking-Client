@@ -1,0 +1,617 @@
+"use client";
+
+// Everything about one submitted doctor or pharmacy form. Two layouts:
+//   layout="panel"  beside the calendar on the dashboard: Details, then Status
+//   layout="page"   the full page at /doctors/:id or /pharmacies/:id, which also lists every form field
+//
+// The sections:
+//   DetailsCard  read only: name and status, visit and place, phone and notes
+//   StatusCard   the part you can change (status, next visit, note, implementation steps),
+//                then the history, then who submitted the form
+//   FormCard     all the numbered fields of the paper form (full page only)
+
+import { useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import {
+  CalendarDays,
+  ExternalLink,
+  ListChecks,
+  LoaderCircle,
+  Mail,
+  MapPin,
+  MessageCircle,
+  Pencil,
+  PencilLine,
+  Phone,
+  Plus,
+  SearchX,
+  StickyNote,
+  Trash2,
+  X,
+} from "lucide-react";
+import { toast } from "sonner";
+
+import { useUser } from "@/components/AppShell";
+import { Avatar, ConfirmDialog, EmptyState, PageHeader, StatusBadge, TypeBadge } from "@/components/common";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Textarea } from "@/components/ui/textarea";
+import { useDeleteRecord, useRecord, useUpdateStatus } from "@/lib/api";
+import { CONSULTATION_TYPES, FIELDS, PAYMENT_METHODS, STATUSES, TYPES } from "@/lib/constants";
+import {
+  countSteps,
+  dashboardLink,
+  dhakaDateTime,
+  formatAvailability,
+  formatDate,
+  formatPhone,
+  formatTaka,
+  relativeDay,
+  timeAgo,
+  toDateInput,
+  toTimeInput,
+  whatsappNumber,
+} from "@/lib/format";
+import { cn } from "@/lib/utils";
+
+export function RecordDetails({ type, id, layout = "page" }) {
+  const { data: record, isPending, isError } = useRecord(type, id);
+
+  if (isPending) return <DetailsSkeleton />;
+  if (isError || !record) {
+    return <EmptyState icon={SearchX} title="We couldn't find this form" description="It may have been deleted, or the link is wrong." />;
+  }
+
+  if (layout === "panel") {
+    return (
+      <div className="space-y-3">
+        <DetailsCard record={record} />
+        <StatusCard record={record} editHref={`${TYPES[type].path}/${record.id}/edit`} />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <PageHeader back={{ href: TYPES[type].path, label: TYPES[type].plural }} title={record.name} actions={<PageActions record={record} />} />
+      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
+        <div className="space-y-6">
+          <DetailsCard record={record} />
+          <FormCard record={record} />
+        </div>
+        <div className="lg:sticky lg:top-6">
+          <StatusCard record={record} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// The buttons at the top of the full page. Only admins can delete.
+function PageActions({ record }) {
+  const user = useUser();
+  const router = useRouter();
+  const deleteRecord = useDeleteRecord(record.type);
+  const [confirming, setConfirming] = useState(false);
+  const { path, label } = TYPES[record.type];
+
+  async function confirmDelete() {
+    try {
+      await deleteRecord.mutateAsync(record.id);
+      toast.success(`${record.name} was deleted.`);
+      router.push(path);
+    } catch (error) {
+      toast.error(error.message);
+    }
+  }
+
+  return (
+    <>
+      <Button variant="outline" asChild>
+        <Link href={dashboardLink(record)}>
+          <CalendarDays /> Show on calendar
+        </Link>
+      </Button>
+      <Button asChild>
+        <Link href={`${path}/${record.id}/edit`}>
+          <Pencil /> Edit form
+        </Link>
+      </Button>
+      {user?.role === "admin" && (
+        <>
+          <Button variant="outline" onClick={() => setConfirming(true)} aria-label={`Delete ${record.name}`} className="text-destructive">
+            <Trash2 />
+          </Button>
+          <ConfirmDialog
+            open={confirming}
+            onOpenChange={setConfirming}
+            title={`Delete ${record.name}?`}
+            description={`This removes the ${label.toLowerCase()} form, its photo and its history for everyone. It can't be undone.`}
+            confirmLabel="Delete"
+            destructive
+            pending={deleteRecord.isPending}
+            onConfirm={confirmDelete}
+          />
+        </>
+      )}
+    </>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Building blocks
+// ---------------------------------------------------------------------------
+
+// A white box with an optional title. `action` (a button) sits on the right of the title.
+function Card({ title, action, children, className }) {
+  return (
+    <section className={cn("rounded-xl border bg-card p-4 sm:p-5", className)}>
+      {title && (
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <h3 className="text-sm font-semibold">{title}</h3>
+          {action}
+        </div>
+      )}
+      {children}
+    </section>
+  );
+}
+
+// An icon, a small grey label, and the value under it.
+function Row({ icon: Icon, label, children }) {
+  return (
+    <div className="flex gap-3">
+      <Icon className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+      <div className="min-w-0 flex-1 text-sm">
+        <p className="text-muted-foreground">{label}</p>
+        <div className="font-medium wrap-break-word">{children}</div>
+      </div>
+    </div>
+  );
+}
+
+// Doctors show their BMDC number under the name; pharmacies show the owner.
+function subtitleOf(record) {
+  if (record.type === "doctor" && record.bmdcRegNo) return `BMDC ${record.bmdcRegNo}`;
+  if (record.type === "pharmacy" && record.ownerName) return `Owner: ${record.ownerName}`;
+  return "";
+}
+
+// ---------------------------------------------------------------------------
+// Section 1, read only: who and where, and how to reach them
+// ---------------------------------------------------------------------------
+function DetailsCard({ record }) {
+  const subtitle = subtitleOf(record);
+  const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(record.address)}`;
+
+  return (
+    <section aria-label="Details" className="divide-y overflow-hidden rounded-xl border bg-card">
+      <div className="flex items-start gap-4 p-4 sm:p-5">
+        <Avatar name={record.name} photoUrl={record.photoUrl} className="size-16 rounded-xl text-lg" />
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <TypeBadge type={record.type} />
+            <StatusBadge status={record.status} steps={countSteps(record.implementationSteps)} />
+          </div>
+          <h2 className="mt-2 text-lg leading-snug font-semibold">{record.name}</h2>
+          {subtitle && <p className="text-sm text-muted-foreground">{subtitle}</p>}
+        </div>
+      </div>
+
+      <div className="space-y-4 p-4 sm:p-5">
+        <Row icon={CalendarDays} label="Visit">
+          {relativeDay(record.visitDate, new Date())}, {formatDate(record.visitDate, "d MMM yyyy · h:mm a")}
+        </Row>
+        <Row icon={MapPin} label={record.type === "doctor" ? "Chamber" : "Address"}>
+          {record.chamberName && (
+            <span className="block">
+              {record.chamberName}
+              {record.chamberNo && ` · ${record.chamberNo}`}
+            </span>
+          )}
+          <span className={cn("block", record.chamberName && "font-normal text-muted-foreground")}>{record.address}</span>
+          <a href={mapsUrl} target="_blank" rel="noreferrer" className="mt-1 inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline">
+            Open in Google Maps <ExternalLink className="size-3.5" />
+          </a>
+        </Row>
+      </div>
+
+      <div className="space-y-4 p-4 sm:p-5">
+        <Row icon={Phone} label="Phone">
+          <span className="tabular-nums">{formatPhone(record.phone)}</span>
+        </Row>
+        <div className="grid grid-cols-2 gap-2">
+          <Button variant="outline" size="sm" asChild>
+            <a href={`tel:${record.phone}`}>
+              <Phone /> Call
+            </a>
+          </Button>
+          <Button variant="outline" size="sm" asChild>
+            <a href={`https://wa.me/${whatsappNumber(record.phone)}`} target="_blank" rel="noreferrer">
+              <MessageCircle /> WhatsApp
+            </a>
+          </Button>
+        </div>
+        {record.email && (
+          <Row icon={Mail} label="Email">
+            <a href={`mailto:${record.email}`} className="hover:underline">
+              {record.email}
+            </a>
+          </Row>
+        )}
+        {record.notes && (
+          <Row icon={StickyNote} label="Notes">
+            <p className="font-normal whitespace-pre-line">{record.notes}</p>
+          </Row>
+        )}
+      </div>
+    </section>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Section 2, the part you can change: the status update, then the history
+// ---------------------------------------------------------------------------
+
+// `editHref` puts the "Edit form" button beside the title (the full page has it at the top instead).
+function StatusCard({ record, editHref }) {
+  const editButton = editHref && (
+    <Button variant="outline" size="sm" asChild>
+      <Link href={editHref}>
+        <Pencil /> Edit form
+      </Link>
+    </Button>
+  );
+
+  return (
+    <Card title="Status" action={editButton}>
+      {/* The `key` gives a fresh form after every saved change. */}
+      <StatusUpdate key={record.updatedAt} record={record} />
+      <CardPart title="History">
+        <History history={record.history} />
+      </CardPart>
+      {record.createdBy && (
+        <CardPart title="Submitted by">
+          <SubmittedBy person={record.createdBy} submittedAt={record.createdAt} />
+        </CardPart>
+      )}
+    </Card>
+  );
+}
+
+// A part of a card under a thin line, with a small grey title ("HISTORY", "SUBMITTED BY").
+function CardPart({ title, children }) {
+  return (
+    <div className="mt-5 border-t pt-4">
+      <h4 className="mb-3 text-xs font-semibold tracking-wide text-muted-foreground uppercase">{title}</h4>
+      {children}
+    </div>
+  );
+}
+
+// After each visit: a new status, the next visit, a note, and the implementation steps.
+// It sits in a tinted box with a blue border, so it's clear at a glance that this part can be changed.
+function StatusUpdate({ record }) {
+  const savedSteps = record.implementationSteps ?? [];
+  const updateStatus = useUpdateStatus(record.type);
+  const [status, setStatus] = useState(record.status);
+  const [day, setDay] = useState(toDateInput(record.visitDate));
+  const [time, setTime] = useState(toTimeInput(record.visitDate));
+  const [note, setNote] = useState("");
+  const [steps, setSteps] = useState(savedSteps);
+
+  const visitDate = dhakaDateTime(day, time || "00:00");
+  const statusChanged = status !== record.status;
+  const dateChanged = visitDate !== new Date(record.visitDate).toISOString();
+  const stepsChanged = JSON.stringify(stepsToSave(steps)) !== JSON.stringify(stepsToSave(savedSteps));
+  const hasNote = note.trim() !== "";
+  const canSave = Boolean(day) && (statusChanged || dateChanged || stepsChanged || hasNote) && !updateStatus.isPending;
+
+  async function save() {
+    const change = { id: record.id, status, visitDate, note: note.trim() };
+    if (stepsChanged) change.implementationSteps = stepsToSave(steps);
+    try {
+      await updateStatus.mutateAsync(change);
+      toast.success(statusChanged ? `${record.name} is now in ${STATUSES[status].label}.` : "Update saved.");
+    } catch (error) {
+      toast.error(error.message);
+    }
+  }
+
+  return (
+    <div className="space-y-3 rounded-lg border border-ring/40 bg-secondary/60 p-3 sm:p-4">
+      <p className="flex items-center gap-1.5 text-xs font-semibold tracking-wide text-primary uppercase">
+        <PencilLine className="size-3.5" aria-hidden="true" /> Update after each visit
+      </p>
+      <StatusPicker value={status} onChange={setStatus} />
+      <div className="grid grid-cols-2 gap-2">
+        <Input type="date" aria-label="Visit date" className="bg-background" value={day} onChange={(event) => setDay(event.target.value)} />
+        <Input type="time" aria-label="Visit time" className="bg-background" value={time} onChange={(event) => setTime(event.target.value)} />
+      </div>
+      {status === "implementation" && <ImplementationSteps steps={steps} onChange={setSteps} />}
+      <Textarea
+        rows={2}
+        className="bg-background"
+        placeholder="Add a note (optional), e.g. Training done"
+        value={note}
+        onChange={(event) => setNote(event.target.value)}
+      />
+      <Button className="w-full" onClick={save} disabled={!canSave}>
+        {updateStatus.isPending && <LoaderCircle className="animate-spin" />}
+        Save update
+      </Button>
+    </div>
+  );
+}
+
+// What the API needs for each step: its id (when it is already saved), the title, and done or not.
+const stepsToSave = (steps) => steps.map(({ id, title, done }) => ({ id, title, done }));
+
+// Ongoing / Setup / Implementation as three buttons. The chosen one is filled in.
+function StatusPicker({ value, onChange }) {
+  return (
+    <div role="radiogroup" aria-label="Status" className="flex flex-wrap gap-1.5">
+      {Object.entries(STATUSES).map(([status, { label, dot }]) => {
+        const isChosen = value === status;
+        return (
+          <button
+            key={status}
+            type="button"
+            role="radio"
+            aria-checked={isChosen}
+            onClick={() => onChange(status)}
+            className={cn(
+              "flex flex-auto items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold whitespace-nowrap transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
+              isChosen ? "border-primary bg-primary text-primary-foreground" : "border-input bg-background text-muted-foreground hover:text-foreground",
+            )}
+          >
+            <span className={cn("size-2 shrink-0 rounded-full", dot, isChosen && "ring-2 ring-primary-foreground/70")} />
+            {label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+// Going live can take several visits, so the implementation is a checklist of steps,
+// ticked off one by one. Changes here are saved with "Save update".
+function ImplementationSteps({ steps, onChange }) {
+  const [newTitle, setNewTitle] = useState("");
+  const progress = countSteps(steps);
+  const canAdd = newTitle.trim().length >= 2;
+
+  function addStep() {
+    if (!canAdd) return;
+    // A new step has no id until it's saved, so it gets a temporary key for the list.
+    onChange([...steps, { key: `new-${Date.now()}`, title: newTitle.trim(), done: false, doneAt: null }]);
+    setNewTitle("");
+  }
+
+  function toggleStep(index) {
+    onChange(steps.map((step, i) => (i === index ? { ...step, done: !step.done } : step)));
+  }
+
+  function removeStep(index) {
+    onChange(steps.filter((step, i) => i !== index));
+  }
+
+  return (
+    <div className="rounded-lg border bg-background p-3">
+      <div className="flex items-center justify-between gap-3">
+        <p className="flex items-center gap-1.5 text-sm font-semibold">
+          <ListChecks className="size-4 text-status-implementation-ink" aria-hidden="true" /> Implementation steps
+        </p>
+        {progress && (
+          <p className="text-xs font-medium text-muted-foreground tabular-nums">
+            {progress.done} of {progress.total} done
+          </p>
+        )}
+      </div>
+
+      {progress ? (
+        <div
+          role="progressbar"
+          aria-label="Steps done"
+          aria-valuemin={0}
+          aria-valuemax={progress.total}
+          aria-valuenow={progress.done}
+          className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted"
+        >
+          <div className="h-full rounded-full bg-status-implementation transition-all" style={{ width: `${(progress.done / progress.total) * 100}%` }} />
+        </div>
+      ) : (
+        <p className="mt-1 text-xs text-muted-foreground">
+          Going live in more than one visit? Add the steps (for example &ldquo;Train the assistant&rdquo;) and tick them off as you go.
+        </p>
+      )}
+
+      {steps.length > 0 && (
+        <ul className="mt-3 space-y-0.5">
+          {steps.map((step, index) => (
+            <li key={step.id ?? step.key} className="flex items-center gap-2 rounded-md px-1 py-1 hover:bg-muted/50">
+              <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5">
+                <input type="checkbox" checked={step.done} onChange={() => toggleStep(index)} className="size-4 shrink-0 accent-status-implementation" />
+                <span className={cn("min-w-0 text-sm wrap-break-word", step.done && "text-muted-foreground line-through")}>{step.title}</span>
+              </label>
+              {step.done && step.doneAt && <span className="shrink-0 text-xs text-status-implementation-ink">{formatDate(step.doneAt, "d MMM")}</span>}
+              <button
+                type="button"
+                onClick={() => removeStep(index)}
+                aria-label={`Remove the step "${step.title}"`}
+                className="shrink-0 rounded p-1 text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
+              >
+                <X className="size-3.5" />
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <div className="mt-3 flex gap-2">
+        <Input
+          value={newTitle}
+          onChange={(event) => setNewTitle(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key !== "Enter") return;
+            event.preventDefault();
+            addStep();
+          }}
+          placeholder="Add a step…"
+          aria-label="New step"
+          maxLength={120}
+          className="h-8"
+        />
+        <Button type="button" variant="outline" size="sm" onClick={addStep} disabled={!canAdd}>
+          <Plus /> Add
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// Newest first: the status, the visit date, the steps done, the note, and who changed it when.
+// The oldest entry is the form being submitted: who submitted it, and when, is shown under "Submitted by".
+function History({ history }) {
+  const newestFirst = [...history].reverse();
+  return (
+    <ol className="space-y-4">
+      {newestFirst.map((entry, index) => {
+        const isOldest = index === newestFirst.length - 1;
+        return (
+          <li key={`${entry.at}-${index}`} className="relative pl-5">
+            <span className={cn("absolute top-1.5 left-0 size-2.5 rounded-full ring-4 ring-card", STATUSES[entry.status]?.dot)} aria-hidden="true" />
+            {!isOldest && <span className="absolute top-4 -bottom-5 left-[4.5px] w-px bg-border" aria-hidden="true" />}
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+              <span className="font-semibold">{STATUSES[entry.status]?.label}</span>
+              <span className="text-muted-foreground">· visit {formatDate(entry.visitDate, "d MMM, h:mm a")}</span>
+            </div>
+            {entry.steps && (
+              <p className="mt-0.5 flex items-center gap-1 text-xs font-medium text-status-implementation-ink">
+                <ListChecks className="size-3.5" aria-hidden="true" /> {entry.steps.done} of {entry.steps.total} steps done
+              </p>
+            )}
+            {!isOldest && (
+              <>
+                {entry.note && <p className="mt-0.5 text-sm">{entry.note}</p>}
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  {entry.by?.name ?? "Someone"} · {timeAgo(entry.at)}
+                </p>
+              </>
+            )}
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
+// The marketing person who filled in the form, so the team knows whom to ask about it.
+// The name and phone number come from their account.
+function SubmittedBy({ person, submittedAt }) {
+  return (
+    <div className="flex items-center gap-3">
+      <Avatar name={person.name} className="size-9" />
+      <div className="min-w-0 flex-1 text-sm">
+        <p className="truncate font-medium">{person.name}</p>
+        {/* On a narrow screen the date moves under the phone number. */}
+        <p className="mt-0.5 flex flex-wrap items-center gap-x-3">
+          {person.phone ? (
+            <a href={`tel:${person.phone}`} className="inline-flex items-center gap-1 font-medium text-primary tabular-nums hover:underline">
+              <Phone className="size-3.5" aria-hidden="true" />
+              {formatPhone(person.phone)}
+            </a>
+          ) : (
+            <span className="text-muted-foreground">No phone number</span>
+          )}
+          <span className="text-xs text-muted-foreground">on {formatDate(submittedAt, "d MMM yyyy")}</span>
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Full page only: every numbered field, as on the paper form
+// ---------------------------------------------------------------------------
+function FormCard({ record }) {
+  const rows = record.type === "doctor" ? doctorRows(record) : pharmacyRows(record);
+  return (
+    <Card title={TYPES[record.type].formTitle}>
+      <dl className="divide-y">
+        {rows.map(([no, label, value]) => (
+          <div key={no} className="flex gap-3 py-2.5">
+            <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-primary text-[10px] font-semibold text-primary-foreground">
+              {no}
+            </span>
+            <dt className="w-32 shrink-0 text-sm text-muted-foreground sm:w-40">{label}</dt>
+            <dd className="min-w-0 flex-1 text-sm font-medium wrap-break-word">
+              {value || <span className="font-normal text-muted-foreground/70">Not given</span>}
+            </dd>
+          </div>
+        ))}
+      </dl>
+    </Card>
+  );
+}
+
+// The rows of each form: [number, label, value shown]
+const labelOf = (options, value) => options.find((option) => option.value === value)?.label ?? value;
+const row = ([no, label], value) => [no, label, value];
+
+function yesOrNo(value) {
+  if (value === true) return "Yes";
+  if (value === false) return "No";
+  return "";
+}
+
+function doctorRows(record) {
+  const f = FIELDS.doctor;
+  return [
+    row(f.name, record.name),
+    row(f.photo, record.photoUrl ? "Attached" : ""),
+    row(f.bmdcRegNo, record.bmdcRegNo),
+    row(f.phone, formatPhone(record.phone)),
+    row(f.email, record.email),
+    row(f.chamberName, record.chamberName),
+    row(f.address, record.address),
+    row(f.consultationTypes, record.consultationTypes.map((value) => labelOf(CONSULTATION_TYPES, value)).join(", ")),
+    row(f.chamberNo, record.chamberNo),
+    row(f.slotDuration, record.slotDuration ? `${record.slotDuration} mins` : ""),
+    row(f.available, formatAvailability(record)),
+    row(f.firstVisit, formatTaka(record.fees?.firstVisit)),
+    row(f.reportView, formatTaka(record.fees?.reportView)),
+    row(f.secondVisit, formatTaka(record.fees?.secondVisit)),
+    row(f.afterOneMonth, formatTaka(record.fees?.afterOneMonth)),
+  ];
+}
+
+function pharmacyRows(record) {
+  const f = FIELDS.pharmacy;
+  return [
+    row(f.name, record.name),
+    row(f.photo, record.photoUrl ? "Attached" : ""),
+    row(f.ownerName, record.ownerName),
+    row(f.phone, formatPhone(record.phone)),
+    row(f.email, record.email),
+    row(f.drugLicenseNo, record.drugLicenseNo),
+    row(f.tradeLicenseNo, record.tradeLicenseNo),
+    row(f.address, record.address),
+    row(f.area, record.area),
+    row(f.district, record.district),
+    row(f.available, formatAvailability(record)),
+    row(f.homeDelivery, yesOrNo(record.homeDelivery)),
+    row(f.paymentMethods, record.paymentMethods.map((value) => labelOf(PAYMENT_METHODS, value)).join(", ")),
+  ];
+}
+
+function DetailsSkeleton() {
+  return (
+    <div className="space-y-3" aria-busy="true" aria-label="Loading">
+      <Skeleton className="h-72 w-full rounded-xl" />
+      <Skeleton className="h-64 w-full rounded-xl" />
+    </div>
+  );
+}
