@@ -2,6 +2,9 @@
 
 export const TIME_ZONE = "Asia/Dhaka";
 
+// Where this browser remembers whether the large-screen sidebar is folded ("collapsed" or "open").
+export const SIDEBAR_STORAGE_KEY = "pz-sidebar";
+
 export const ROLES = {
   admin: { label: "Admin", description: "Manages the team and sees everything" },
   marketing: { label: "Marketing", description: "Fills in forms and updates their status" },

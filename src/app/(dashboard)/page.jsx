@@ -1,5 +1,5 @@
-import { Dashboard } from "@/components/Dashboard";
-import { Protected } from "@/components/Protected";
+import { Dashboard } from "@/components/dashboard/Dashboard";
+import { Protected } from "@/components/layout/Protected";
 
 export const metadata = { title: "Dashboard" };
 

@@ -1,26 +1,11 @@
 import { CalendarDays, ClipboardCheck, Users } from "lucide-react";
 
-import { Logo } from "@/components/Logo";
+import { Logo } from "@/components/shared/Logo";
 import { STATUSES } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
-// The sign-in page frame: a brand panel on large screens, the form beside it.
-export function AuthShell({ children }) {
-  return (
-    <div className="grid min-h-dvh bg-background lg:grid-cols-[1.05fr_1fr]">
-      <BrandPanel />
-      <main className="flex flex-col px-4 py-8 sm:px-8">
-        <Logo className="lg:hidden" />
-        <div className="flex flex-1 items-center justify-center py-10">
-          <div className="w-full max-w-sm">{children}</div>
-        </div>
-        <p className="text-center text-xs text-muted-foreground">PharmaZ247 · Internal tool for the marketing team</p>
-      </main>
-    </div>
-  );
-}
-
-function BrandPanel() {
+// The navy panel beside the sign-in form on large screens: what the tracker is for, in one glance.
+export function BrandPanel() {
   return (
     <aside className="relative hidden overflow-hidden bg-primary p-12 text-primary-foreground lg:flex lg:flex-col">
       <div aria-hidden="true" className="pointer-events-none absolute inset-0">

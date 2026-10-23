@@ -4,7 +4,8 @@ import { useForm } from "react-hook-form";
 import { LoaderCircle } from "lucide-react";
 import { toast } from "sonner";
 
-import { FormField, PasswordInput, fieldProps, passwordRules, showServerErrors } from "@/components/common";
+import { FormField, fieldProps, showServerErrors } from "@/components/shared/FormField";
+import { PasswordInput, passwordRules } from "@/components/shared/PasswordInput";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
 

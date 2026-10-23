@@ -1,5 +1,5 @@
-import { Protected } from "@/components/Protected";
-import { RecordDetails } from "@/components/RecordDetails";
+import { Protected } from "@/components/layout/Protected";
+import { RecordDetails } from "@/components/record-details/RecordDetails";
 
 export const metadata = { title: "Pharmacy" };
 

@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { LogoMark } from "@/components/Logo";
+import { LogoMark } from "@/components/shared/Logo";
 import { Button } from "@/components/ui/button";
 
 export const metadata = { title: "Page not found" };

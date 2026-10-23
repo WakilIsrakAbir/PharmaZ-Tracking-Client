@@ -1,6 +1,7 @@
 import { Hind_Siliguri, Plus_Jakarta_Sans } from "next/font/google";
 
-import { Providers } from "@/components/Providers";
+import { Providers } from "@/components/layout/Providers";
+import { SIDEBAR_STORAGE_KEY } from "@/lib/constants";
 import "./globals.css";
 
 const jakarta = Plus_Jakarta_Sans({
@@ -29,9 +30,19 @@ export const viewport = {
   themeColor: "#1e2a5e",
 };
 
+// Runs in <head>, before anything is drawn: if this browser folded the sidebar last time, fold it
+// now, so it doesn't open and then jump shut. (The sidebar's hamburger button changes it: components/app-shell/useSidebar.js.)
+const foldSidebarScript = `try {
+  if (localStorage.getItem("${SIDEBAR_STORAGE_KEY}") === "collapsed") document.documentElement.dataset.sidebar = "collapsed";
+} catch {}`;
+
 export default function RootLayout({ children }) {
   return (
-    <html lang="en" className={`${jakarta.variable} ${bangla.variable} h-full antialiased`}>
+    // suppressHydrationWarning: the script below may add data-sidebar to <html> before React starts.
+    <html lang="en" className={`${jakarta.variable} ${bangla.variable} h-full antialiased`} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: foldSidebarScript }} />
+      </head>
       <body className="min-h-full">
         <Providers>{children}</Providers>
       </body>

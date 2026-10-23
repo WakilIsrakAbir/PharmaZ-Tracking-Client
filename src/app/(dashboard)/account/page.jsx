@@ -1,8 +1,9 @@
 import { CalendarDays, Mail, Phone } from "lucide-react";
 
-import { ChangePasswordForm } from "@/components/ChangePasswordForm";
-import { Avatar, PageHeader } from "@/components/common";
-import { Protected } from "@/components/Protected";
+import { ChangePasswordForm } from "@/components/account/ChangePasswordForm";
+import { Protected } from "@/components/layout/Protected";
+import { Avatar } from "@/components/shared/Avatar";
+import { PageHeader } from "@/components/shared/PageHeader";
 import { Badge } from "@/components/ui/badge";
 import { ROLES } from "@/lib/constants";
 import { formatDate, formatPhone } from "@/lib/format";

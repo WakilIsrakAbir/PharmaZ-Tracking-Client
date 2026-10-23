@@ -1,5 +1,5 @@
-import { Protected } from "@/components/Protected";
-import { TeamPage } from "@/components/TeamPage";
+import { Protected } from "@/components/layout/Protected";
+import { TeamPage } from "@/components/team/TeamPage";
 
 export const metadata = { title: "Team" };
 

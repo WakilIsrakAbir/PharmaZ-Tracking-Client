@@ -1,8 +1,9 @@
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
 
-import { AuthShell } from "@/components/AuthShell";
-import { ChoosePasswordForm, LoginForm } from "@/components/LoginForm";
+import { AuthShell } from "@/components/auth-shell/AuthShell";
+import { ChoosePasswordForm } from "@/components/login/ChoosePasswordForm";
+import { LoginForm } from "@/components/login/LoginForm";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getSessionUser } from "@/lib/session";
 
@@ -20,9 +21,9 @@ export default function LoginPage() {
 
 // Already signed in → the dashboard.
 // Signed in but still on a temporary password → choose your own first.
-// Otherwise → the sign-in form.
+// Otherwise → the sign-in form. (Also when the API can't be reached: signing in then says so.)
 async function SignIn() {
-  const user = await getSessionUser();
+  const user = await getSessionUser().catch(() => null);
   if (user && !user.mustChangePassword) redirect("/");
   if (user) return <ChoosePasswordForm name={user.name} />;
   return <LoginForm />;

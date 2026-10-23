@@ -6,6 +6,16 @@
    which this app never sets (light theme only). */
 @custom-variant dark (&:is(.dark *));
 
+/* "sidebar-collapsed:" styles apply on large screens while the sidebar is folded into icons
+   (<html data-sidebar="collapsed">, set by the sidebar's hamburger button, components/app-shell/useSidebar.js). */
+@custom-variant sidebar-collapsed {
+  @media (width >= 64rem) {
+    &:where([data-sidebar="collapsed"] *) {
+      @slot;
+    }
+  }
+}
+
 /* Turns the colors below into Tailwind classes, e.g. bg-primary, text-muted-foreground. */
 @theme inline {
   --font-sans: var(--font-jakarta), var(--font-bangla), ui-sans-serif, system-ui, sans-serif;

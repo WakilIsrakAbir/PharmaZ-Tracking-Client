@@ -8,6 +8,16 @@ import { redirect } from "next/navigation";
 const API_URL = process.env.API_URL ?? "http://localhost:4000";
 const SESSION_COOKIE = "pz_session";
 
+// The API can't be used right now: it doesn't answer at all (not running), or it answers 503
+// because it can't reach its database. Pages catch this and show a calm message with the
+// API's reason, when it gave one (components/layout/Protected.jsx).
+// The reason travels inside the message ("SERVER_UNREACHABLE: <reason>"), because an error
+// thrown inside a cached function keeps only its message.
+const SERVER_UNREACHABLE = "SERVER_UNREACHABLE";
+const serverUnreachable = (reason) => new Error(reason ? `${SERVER_UNREACHABLE}: ${reason}` : SERVER_UNREACHABLE);
+export const isServerUnreachable = (error) => Boolean(error?.message?.startsWith(SERVER_UNREACHABLE));
+export const unreachableReason = (error) => error.message.slice(`${SERVER_UNREACHABLE}: `.length) || null;
+
 // The signed-in user, or null. 'use cache: private' keeps the answer in this browser only,
 // so moving between pages doesn't ask the API every time. Call it inside <Suspense>.
 export async function getSessionUser() {
@@ -16,7 +26,18 @@ export async function getSessionUser() {
   const token = (await cookies()).get(SESSION_COOKIE)?.value;
   if (!token) return null;
 
-  const response = await fetch(`${API_URL}/api/v1/auth/me`, { headers: { Cookie: `${SESSION_COOKIE}=${token}` } });
+  let response;
+  try {
+    response = await fetch(`${API_URL}/api/v1/auth/me`, { headers: { Cookie: `${SESSION_COOKIE}=${token}` } });
+  } catch (error) {
+    // A warning, not an error: it's expected while the API starts. The API's own terminal says why.
+    console.warn(`⚠ Can't reach the API at ${API_URL} (${error.cause?.code ?? error.message}). Is it running?`);
+    throw serverUnreachable();
+  }
+  if (response.status === 503) {
+    const body = await response.json().catch(() => null);
+    throw serverUnreachable(body?.error?.message);
+  }
   if (response.status === 401) return null;
   if (!response.ok) throw new Error(`The API could not load your account (status ${response.status}).`);
 
