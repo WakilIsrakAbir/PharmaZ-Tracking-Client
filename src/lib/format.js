@@ -122,6 +122,15 @@ export function initials(name = "") {
 
 export const firstName = (name = "") => name.trim().split(/\s+/)[0] ?? "";
 
+// Who is on a form, in one line: "by Wakil · with Rafi, Sumi". `showSubmitter` is false for a
+// marketing person's own lists, where "by me" would be noise. Empty when there is nothing to say.
+export function peopleLine({ createdBy, assignedTo = [] }, { showSubmitter = true } = {}) {
+  const parts = [];
+  if (showSubmitter && createdBy) parts.push(`by ${createdBy.name}`);
+  if (assignedTo.length) parts.push(`with ${assignedTo.map((person) => person.name).join(", ")}`);
+  return parts.join(" · ");
+}
+
 // ---------------------------------------------------------------------------
 // Links
 // ---------------------------------------------------------------------------

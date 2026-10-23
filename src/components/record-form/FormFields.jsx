@@ -225,7 +225,7 @@ export function StatusChoice({ register }) {
       <legend className="text-sm font-medium">
         <RequiredLabel>Status</RequiredLabel>
       </legend>
-      <div className="grid gap-2 sm:grid-cols-3">
+      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
         {Object.entries(STATUSES).map(([value, status]) => (
           <label
             key={value}

@@ -56,6 +56,9 @@
   --color-status-implementation: var(--status-implementation);
   --color-status-implementation-soft: var(--status-implementation-soft);
   --color-status-implementation-ink: var(--status-implementation-ink);
+  --color-status-support: var(--status-support);
+  --color-status-support-soft: var(--status-support-soft);
+  --color-status-support-ink: var(--status-support-ink);
 
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
@@ -106,6 +109,9 @@
   --status-implementation: #16a37a;
   --status-implementation-soft: #e5f6ee;
   --status-implementation-ink: #0b7553;
+  --status-support: #7c5cd6;
+  --status-support-soft: #efeafb;
+  --status-support-ink: #5b3bb0;
 }
 
 @layer base {

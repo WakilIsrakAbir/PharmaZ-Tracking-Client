@@ -20,7 +20,7 @@ import { RecordDetails } from "@/components/record-details/RecordDetails";
 import { Avatar, StatusBadge, TypeIcon } from "@/components/shared/common";
 import { Button } from "@/components/ui/button";
 import { useCalendar } from "@/lib/api";
-import { dayKey, dhakaDateTime, firstName, formatDate, greeting, relativeDay } from "@/lib/format";
+import { dayKey, dhakaDateTime, firstName, formatDate, greeting, peopleLine, relativeDay } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 export function Dashboard() {
@@ -124,7 +124,7 @@ export function Dashboard() {
 
 // ---------------------------------------------------------------------------
 // Right, when no visit is picked: the visits on the picked day.
-// Admins see the whole team's visits, so each one also says whose it is.
+// Admins see the whole team's visits, so each one also says whose it is (and who is assigned).
 // ---------------------------------------------------------------------------
 function DayVisits({ day, now, visits, showSubmitter, onPickVisit }) {
   const middayOfDay = dhakaDateTime(day, "12:00");
@@ -159,9 +159,9 @@ function DayVisits({ day, now, visits, showSubmitter, onPickVisit }) {
                   </p>
                   <p className="truncate font-semibold">{visit.name}</p>
                   <p className="truncate text-sm text-muted-foreground">{visit.place}</p>
-                  {showSubmitter && visit.createdBy && (
+                  {peopleLine(visit, { showSubmitter }) && (
                     <p className="mt-0.5 flex items-center gap-1 truncate text-xs text-muted-foreground">
-                      <UserRound className="size-3 shrink-0" aria-hidden="true" /> {visit.createdBy.name}
+                      <UserRound className="size-3 shrink-0" aria-hidden="true" /> {peopleLine(visit, { showSubmitter })}
                     </p>
                   )}
                 </div>

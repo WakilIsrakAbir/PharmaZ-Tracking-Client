@@ -11,11 +11,11 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useRecords } from "@/lib/api";
 import { STATUSES, TYPES } from "@/lib/constants";
-import { countSteps, formatDate, formatPhone, relativeDay } from "@/lib/format";
+import { countSteps, formatDate, formatPhone, peopleLine, relativeDay } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 // /doctors and /pharmacies, newest visit first. Admins see every form, with who submitted it;
-// marketing people see the forms they submitted.
+// marketing people see the forms they submitted or were assigned to.
 export function RecordList({ type }) {
   const isAdmin = useUser()?.role === "admin";
   const { label, plural, path } = TYPES[type];
@@ -37,7 +37,7 @@ export function RecordList({ type }) {
         description={
           isAdmin
             ? `Every ${label.toLowerCase()} form the team has submitted, and where each one stands.`
-            : `The ${label.toLowerCase()} forms you have submitted, and where each one stands.`
+            : `The ${label.toLowerCase()} forms you submitted or were assigned to, and where each one stands.`
         }
         actions={
           <Button asChild>
@@ -137,6 +137,7 @@ export function RecordList({ type }) {
 }
 
 function RecordRow({ record, path, showSubmitter }) {
+  const people = peopleLine(record, { showSubmitter });
   const place = record.type === "doctor" ? record.chamberName || record.address : [record.area, record.district].filter(Boolean).join(", ") || record.address;
   return (
     <li>
@@ -156,7 +157,7 @@ function RecordRow({ record, path, showSubmitter }) {
             <TypeIcon type={record.type} className="mr-1.5 inline size-3.5 text-muted-foreground md:hidden" />
             {place}
           </p>
-          {showSubmitter && <p className="truncate text-xs text-muted-foreground">by {record.createdBy?.name ?? "someone"}</p>}
+          {people && <p className="truncate text-xs text-muted-foreground">{people}</p>}
         </div>
         <p className="col-span-2 row-start-3 text-sm md:col-span-1 md:row-start-auto">
           <span className="font-medium">{relativeDay(record.visitDate, new Date())}</span>

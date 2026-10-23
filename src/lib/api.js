@@ -109,6 +109,20 @@ export const useUpdateStatus = (type) =>
 export const useDeleteRecord = (type) =>
   useRecordMutation(type, (id) => api(`${pathFor(type)}/${id}`, { method: "DELETE" }));
 
+// Admins only: { id, userIds } replaces who is assigned to a record. Unlike the other mutations this
+// returns the whole answer, because `meta.email` says whether the assignment emails went out.
+export function useAssign(type) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, userIds }) => api(`${pathFor(type)}/${id}/assignees`, { method: "PUT", body: { userIds } }),
+    onSuccess: ({ data: record }) => {
+      queryClient.setQueryData(["record", type, record.id], record);
+      queryClient.invalidateQueries({ queryKey: ["records", type] });
+      queryClient.invalidateQueries({ queryKey: ["calendar"] });
+    },
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Team accounts (admin). The team is small, so the whole list is loaded once.
 // ---------------------------------------------------------------------------

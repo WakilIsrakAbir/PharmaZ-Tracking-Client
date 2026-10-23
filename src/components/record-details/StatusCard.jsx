@@ -3,14 +3,17 @@
 // Section 2 of a form's details, the part you can change:
 //   StatusUpdate         new status, next visit, a note, and the implementation steps
 //   ImplementationSteps  the checklist shown while the status is Implementation
+//   AssignedTo           the teammates working on this form (admins change them in AssignDialog.jsx)
 //   History              every change, newest first
 //   SubmittedBy          the marketing person who filled in the form
 
 import { useState } from "react";
 import Link from "next/link";
-import { ListChecks, LoaderCircle, Pencil, PencilLine, Phone, Plus, X } from "lucide-react";
+import { ListChecks, LoaderCircle, Pencil, PencilLine, Phone, Plus, UserPlus, X } from "lucide-react";
 import { toast } from "sonner";
 
+import { useUser } from "@/components/app-shell/useUser";
+import { AssignDialog } from "@/components/record-details/AssignDialog";
 import { Avatar } from "@/components/shared/common";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -49,6 +52,7 @@ export function StatusCard({ record, editHref }) {
     <Card title="Status" action={editButton}>
       {/* The `key` gives a fresh form after every saved change. */}
       <StatusUpdate key={record.updatedAt} record={record} />
+      <AssignedTo record={record} />
       <CardPart title="History">
         <History history={record.history} />
       </CardPart>
@@ -62,12 +66,58 @@ export function StatusCard({ record, editHref }) {
 }
 
 // A part of a card under a thin line, with a small grey title ("HISTORY", "SUBMITTED BY").
-function CardPart({ title, children }) {
+// `action` (a small button) sits on the right of the title.
+function CardPart({ title, action, children }) {
   return (
     <div className="mt-5 border-t pt-4">
-      <h4 className="mb-3 text-xs font-semibold tracking-wide text-muted-foreground uppercase">{title}</h4>
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <h4 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">{title}</h4>
+        {action}
+      </div>
       {children}
     </div>
+  );
+}
+
+// The teammates an admin assigned to this form. They see it and can update it, like the submitter.
+// Admins get an "Assign" button; everyone else just sees who is on it.
+function AssignedTo({ record }) {
+  const isAdmin = useUser()?.role === "admin";
+  const [assigning, setAssigning] = useState(false);
+  const people = record.assignedTo ?? [];
+
+  const assignButton = isAdmin && (
+    <Button variant="outline" size="sm" onClick={() => setAssigning(true)}>
+      <UserPlus /> Assign
+    </Button>
+  );
+
+  return (
+    <CardPart title="Assigned to" action={assignButton}>
+      {people.length === 0 ? (
+        <p className="text-sm text-muted-foreground">{isAdmin ? "No one yet. Assign teammates and they'll get the form by email." : "No one yet."}</p>
+      ) : (
+        <ul className="space-y-3">
+          {people.map((person) => (
+            <li key={person.id} className="flex items-center gap-3">
+              <Avatar name={person.name} className="size-9" />
+              <div className="min-w-0 flex-1 text-sm">
+                <p className="truncate font-medium">{person.name}</p>
+                {person.phone ? (
+                  <a href={`tel:${person.phone}`} className="inline-flex items-center gap-1 text-xs font-medium text-primary tabular-nums hover:underline">
+                    <Phone className="size-3" aria-hidden="true" />
+                    {formatPhone(person.phone)}
+                  </a>
+                ) : (
+                  <p className="truncate text-xs text-muted-foreground">{person.email}</p>
+                )}
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+      {isAdmin && <AssignDialog open={assigning} onOpenChange={setAssigning} record={record} />}
+    </CardPart>
   );
 }
 

@@ -33,6 +33,13 @@ export const STATUSES = {
     badge: "bg-status-implementation-soft text-status-implementation-ink",
     chip: "bg-status-implementation-soft text-status-implementation-ink border-status-implementation",
   },
+  support: {
+    label: "Support",
+    hint: "Live, now supporting them",
+    dot: "bg-status-support",
+    badge: "bg-status-support-soft text-status-support-ink",
+    chip: "bg-status-support-soft text-status-support-ink border-status-support",
+  },
 };
 
 export const TYPES = {
