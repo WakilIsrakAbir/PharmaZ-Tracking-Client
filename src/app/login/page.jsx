@@ -2,8 +2,7 @@ import { Suspense } from "react";
 import { redirect } from "next/navigation";
 
 import { AuthShell } from "@/components/auth-shell/AuthShell";
-import { ChoosePasswordForm } from "@/components/login/ChoosePasswordForm";
-import { LoginForm } from "@/components/login/LoginForm";
+import { ChoosePasswordForm, LoginForm } from "@/components/login/LoginForm";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getSessionUser } from "@/lib/session";
 

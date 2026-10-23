@@ -4,22 +4,24 @@
 //   • click a day   → that day's visits show on the right
 //   • click a visit → that doctor's or pharmacy's details show on the right
 // What is shown lives in the address bar (?month=2026-10&day=2026-10-21&type=doctor&id=…),
-// so a view can be shared and survives a refresh.
+// so a view can be shared and survives a refresh. The calendar grid itself is in MonthCalendar.jsx.
 
 import { use, useRef } from "react";
+import Link from "next/link";
 import { io } from "next/cache";
 import { useSearchParams } from "next/navigation";
 import { addDays, addMonths, format } from "date-fns";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Plus, UserRound } from "lucide-react";
 
 import { useUser } from "@/components/app-shell/useUser";
 import { groupByDay, monthDays, monthStart, readView } from "@/components/dashboard/calendar";
-import { DayVisits } from "@/components/dashboard/DayVisits";
 import { MonthCalendar } from "@/components/dashboard/MonthCalendar";
-import { NewFormButtons } from "@/components/dashboard/NewFormButtons";
 import { RecordDetails } from "@/components/record-details/RecordDetails";
+import { Avatar, StatusBadge, TypeIcon } from "@/components/shared/common";
+import { Button } from "@/components/ui/button";
 import { useCalendar } from "@/lib/api";
-import { dayKey, dhakaDateTime, firstName, formatDate, greeting } from "@/lib/format";
+import { dayKey, dhakaDateTime, firstName, formatDate, greeting, relativeDay } from "@/lib/format";
+import { cn } from "@/lib/utils";
 
 export function Dashboard() {
   use(io()); // "today" is worked out on every visit, not saved into the page
@@ -116,6 +118,79 @@ export function Dashboard() {
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Right, when no visit is picked: the visits on the picked day.
+// Admins see the whole team's visits, so each one also says whose it is.
+// ---------------------------------------------------------------------------
+function DayVisits({ day, now, visits, showSubmitter, onPickVisit }) {
+  const middayOfDay = dhakaDateTime(day, "12:00");
+
+  return (
+    <section className="overflow-hidden rounded-xl border bg-card">
+      <header className="border-b px-5 py-4">
+        <p className="text-xs font-semibold tracking-wide text-primary uppercase">{relativeDay(middayOfDay, now)}</p>
+        <h2 className="mt-0.5 text-lg font-semibold">{formatDate(middayOfDay, "EEEE, d MMMM")}</h2>
+        <p className="text-sm text-muted-foreground">{visits.length ? `${visits.length} visit${visits.length === 1 ? "" : "s"}` : "Nothing planned yet"}</p>
+      </header>
+
+      {visits.length === 0 ? (
+        <div className="px-5 py-8 text-center">
+          <p className="text-sm text-muted-foreground">Visited a doctor or pharmacy? Fill in the form and it shows up here.</p>
+          <NewFormButtons day={day} className="mt-4" />
+        </div>
+      ) : (
+        <ul className="divide-y">
+          {visits.map((visit) => (
+            <li key={visit.id}>
+              <button
+                type="button"
+                onClick={() => onPickVisit(visit)}
+                className="flex w-full items-start gap-3 px-5 py-3.5 text-left transition-colors outline-none hover:bg-muted/50 focus-visible:bg-muted/50"
+              >
+                <Avatar name={visit.name} photoUrl={visit.photoUrl} className="size-10" />
+                <div className="min-w-0 flex-1">
+                  <p className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                    <TypeIcon type={visit.type} className="size-3.5" />
+                    {formatDate(visit.visitDate, "h:mm a")}
+                  </p>
+                  <p className="truncate font-semibold">{visit.name}</p>
+                  <p className="truncate text-sm text-muted-foreground">{visit.place}</p>
+                  {showSubmitter && visit.createdBy && (
+                    <p className="mt-0.5 flex items-center gap-1 truncate text-xs text-muted-foreground">
+                      <UserRound className="size-3 shrink-0" aria-hidden="true" /> {visit.createdBy.name}
+                    </p>
+                  )}
+                </div>
+                <StatusBadge status={visit.status} steps={visit.steps} />
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+// The two buttons that start a new form, both alike so neither looks "selected".
+// Each opens an empty form with the visit date already set to `day`.
+// They sit one under the other, full width; `inline` puts them side by side on wider screens.
+function NewFormButtons({ day, inline = false, className }) {
+  return (
+    <div className={cn("grid gap-2", inline && "sm:flex", className)}>
+      <Button asChild>
+        <Link href={`/doctors/new?date=${day}`}>
+          <Plus /> New doctor form
+        </Link>
+      </Button>
+      <Button asChild>
+        <Link href={`/pharmacies/new?date=${day}`}>
+          <Plus /> New pharmacy form
+        </Link>
+      </Button>
     </div>
   );
 }

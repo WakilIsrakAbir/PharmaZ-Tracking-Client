@@ -2,7 +2,7 @@
 
 import { TriangleAlert } from "lucide-react";
 
-import { EmptyState } from "@/components/shared/EmptyState";
+import { EmptyState } from "@/components/shared/common";
 import { Button } from "@/components/ui/button";
 
 export default function DashboardError({ retry, reset }) {

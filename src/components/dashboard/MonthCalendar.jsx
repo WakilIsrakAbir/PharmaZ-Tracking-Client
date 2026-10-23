@@ -1,11 +1,18 @@
 "use client";
 
+// The left side of the dashboard: the month grid, a chip for every visit.
+//   MonthCalendar  the header (month, Today, the Doctors / Pharmacies filter) and the grid
+//   DayCell        one day in the grid
+//   VisitChip      one visit in a day
+
 import { format } from "date-fns";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import { monthStart } from "@/components/dashboard/calendar";
-import { DayCell } from "@/components/dashboard/DayCell";
+import { TypeIcon } from "@/components/shared/common";
 import { Button } from "@/components/ui/button";
+import { STATUSES } from "@/lib/constants";
+import { formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 const WEEKDAYS = ["Sat", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri"]; // the week starts on Saturday in Bangladesh
@@ -14,8 +21,8 @@ const FILTERS = [
   { value: "doctor", label: "Doctors" },
   { value: "pharmacy", label: "Pharmacies" },
 ];
+const CHIPS_PER_DAY = 3; // more than this shows "+N more"
 
-// Left side of the dashboard: the month, with a chip for every visit.
 export function MonthCalendar({ month, days, visitsByDay, today, pickedDay, pickedVisitId, filter, loading, onChangeMonth, onToday, onFilter, onPickDay, onPickVisit }) {
   return (
     <section aria-label="Calendar" className="overflow-hidden rounded-xl border bg-card">
@@ -81,5 +88,88 @@ export function MonthCalendar({ month, days, visitsByDay, today, pickedDay, pick
         })}
       </div>
     </section>
+  );
+}
+
+// One day in the grid. Larger screens show a chip per visit; phones show colored dots.
+// The last column and the last row have no line of their own: the card's border is already there.
+function DayCell({ date, day, visits, inMonth, isToday, isPicked, pickedVisitId, onPickDay, onPickVisit }) {
+  const isFriday = date.getDay() === 5; // the weekend in Bangladesh
+  const hiddenCount = visits.length - CHIPS_PER_DAY;
+  const visitCount = visits.length ? `, ${visits.length} visit${visits.length === 1 ? "" : "s"}` : "";
+
+  return (
+    <div
+      onClick={() => onPickDay(day)}
+      className={cn(
+        "relative min-h-16 cursor-pointer border-r border-b p-1.5 transition-colors nth-[7n]:border-r-0 nth-last-[-n+7]:border-b-0 hover:bg-muted/40 sm:min-h-28",
+        !inMonth && "bg-muted/30",
+        inMonth && isFriday && "bg-muted/25",
+        isPicked && "bg-secondary/70 hover:bg-secondary/70",
+      )}
+    >
+      <button
+        type="button"
+        onClick={(event) => {
+          event.stopPropagation();
+          onPickDay(day);
+        }}
+        aria-label={`${format(date, "EEEE d MMMM")}${visitCount}`}
+        aria-pressed={isPicked}
+        className={cn(
+          "flex size-7 items-center justify-center rounded-full text-sm tabular-nums outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
+          !inMonth && "text-muted-foreground/60",
+          isToday && "bg-primary font-semibold text-primary-foreground",
+          isPicked && !isToday && "font-semibold ring-2 ring-primary",
+        )}
+      >
+        {date.getDate()}
+      </button>
+
+      <div className="mt-1 hidden space-y-1 sm:block">
+        {visits.slice(0, CHIPS_PER_DAY).map((visit) => (
+          <VisitChip
+            key={visit.id}
+            visit={visit}
+            isPicked={visit.id === pickedVisitId}
+            onClick={(event) => {
+              event.stopPropagation();
+              onPickVisit(visit, day);
+            }}
+          />
+        ))}
+        {hiddenCount > 0 && <p className="px-1 text-[11px] font-medium text-muted-foreground">+{hiddenCount} more</p>}
+      </div>
+
+      {visits.length > 0 && (
+        <div className="mt-1 flex flex-wrap gap-0.5 px-1 sm:hidden" aria-hidden="true">
+          {visits.slice(0, 4).map((visit) => (
+            <span key={visit.id} className={cn("size-1.5 rounded-full", STATUSES[visit.status]?.dot)} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// A visit in the grid: the time on top, the name under it, colored by status.
+function VisitChip({ visit, isPicked, onClick }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={`${formatDate(visit.visitDate, "h:mm a")} · ${visit.name} · ${visit.place}`}
+      className={cn(
+        "block w-full overflow-hidden rounded-md border-l-[3px] px-1.5 py-1 text-left text-[11px] leading-tight transition outline-none hover:brightness-95 focus-visible:ring-2 focus-visible:ring-ring",
+        STATUSES[visit.status]?.chip,
+        isPicked && "ring-2 ring-primary ring-offset-1",
+      )}
+    >
+      <span className="flex items-center gap-1 font-semibold tabular-nums">
+        <TypeIcon type={visit.type} className="size-3 shrink-0 opacity-70" />
+        {formatDate(visit.visitDate, "h:mm a")}
+      </span>
+      <span className="mt-0.5 block truncate">{visit.name}</span>
+    </button>
   );
 }

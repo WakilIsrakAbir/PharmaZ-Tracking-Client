@@ -7,8 +7,8 @@
 // time and status decide where the form shows on the dashboard calendar.
 //
 // To add a field: add it to the model on the server (server/src/models), add its
-// number and label to FIELDS in lib/constants.js, then add it to DoctorFields.jsx or
-// PharmacyFields.jsx.
+// number and label to FIELDS in lib/constants.js, then add it to DoctorFields or
+// PharmacyFields in FormFields.jsx.
 
 import { use, useState } from "react";
 import Link from "next/link";
@@ -19,22 +19,14 @@ import { LoaderCircle, SearchX } from "lucide-react";
 import { toast } from "sonner";
 
 import { useUser } from "@/components/app-shell/useUser";
-import { DoctorFields } from "@/components/record-form/DoctorFields";
-import { RequiredLabel } from "@/components/record-form/NumberedField";
-import { PharmacyFields } from "@/components/record-form/PharmacyFields";
-import { PhotoPicker } from "@/components/record-form/PhotoPicker";
-import { StatusChoice } from "@/components/record-form/StatusChoice";
-import { showApiErrors, startingValues, toApiValues } from "@/components/record-form/values";
-import { EmptyState } from "@/components/shared/EmptyState";
-import { FormField } from "@/components/shared/FormField";
-import { PageHeader } from "@/components/shared/PageHeader";
-import { PageSkeleton } from "@/components/shared/PageSkeleton";
+import { DoctorFields, PharmacyFields, PhotoPicker, RequiredLabel, StatusChoice } from "@/components/record-form/FormFields";
+import { EmptyState, FormField, PageHeader, PageSkeleton } from "@/components/shared/common";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useRecord, useSaveRecord } from "@/lib/api";
 import { FIELDS, TYPES } from "@/lib/constants";
-import { dashboardLink, formatDate, formatPhone } from "@/lib/format";
+import { dashboardLink, dayKey, dhakaDateTime, formatDate, formatPhone, toDateInput, toTimeInput } from "@/lib/format";
 
 // ---------------------------------------------------------------------------
 // The two pages
@@ -154,4 +146,86 @@ function RecordForm({ type, record, visitDay }) {
       </div>
     </form>
   );
+}
+
+// ---------------------------------------------------------------------------
+// Values: between the form and the API
+// ---------------------------------------------------------------------------
+
+// What the form starts with: the saved record when editing, otherwise empty boxes,
+// with the visit on `visitDay` (from ?date=) or today, at 10:00.
+function startingValues(type, record, visitDay) {
+  const text = (key) => record?.[key] ?? "";
+
+  let visitDate = dayKey(new Date());
+  if (/^\d{4}-\d{2}-\d{2}$/.test(visitDay ?? "")) visitDate = visitDay;
+  if (record) visitDate = toDateInput(record.visitDate);
+
+  const shared = {
+    name: text("name"),
+    phone: record ? formatPhone(record.phone) : "",
+    email: text("email"),
+    address: text("address"),
+    availableDays: record?.availableDays ?? [],
+    availableFrom: text("availableFrom"),
+    availableTo: text("availableTo"),
+    visitDay: visitDate,
+    visitTime: record ? toTimeInput(record.visitDate) : "10:00",
+    status: record?.status ?? "ongoing",
+    notes: text("notes"),
+  };
+
+  if (type === "doctor") {
+    const fee = (key) => record?.fees?.[key] ?? "";
+    return {
+      ...shared,
+      bmdcRegNo: text("bmdcRegNo"),
+      chamberName: text("chamberName"),
+      consultationTypes: record?.consultationTypes ?? [],
+      chamberNo: text("chamberNo"),
+      slotDuration: record?.slotDuration ? String(record.slotDuration) : "",
+      fees: { firstVisit: fee("firstVisit"), reportView: fee("reportView"), secondVisit: fee("secondVisit"), afterOneMonth: fee("afterOneMonth") },
+    };
+  }
+
+  return {
+    ...shared,
+    ownerName: text("ownerName"),
+    drugLicenseNo: text("drugLicenseNo"),
+    tradeLicenseNo: text("tradeLicenseNo"),
+    area: text("area"),
+    district: text("district"),
+    homeDelivery: yesNoFromBoolean(record?.homeDelivery),
+    paymentMethods: record?.paymentMethods ?? [],
+  };
+}
+
+// The form keeps the visit as a day and a time; the API wants one moment (visitDate).
+function toApiValues(type, { visitDay, visitTime, homeDelivery, ...fields }) {
+  const values = { ...fields, visitDate: dhakaDateTime(visitDay, visitTime) };
+  if (type === "pharmacy") values.homeDelivery = booleanFromYesNo(homeDelivery);
+  return values;
+}
+
+function yesNoFromBoolean(value) {
+  if (value === true) return "yes";
+  if (value === false) return "no";
+  return "";
+}
+
+function booleanFromYesNo(value) {
+  if (value === "yes") return true;
+  if (value === "no") return false;
+  return null;
+}
+
+// Puts the API's messages next to the right boxes. The API calls the visit "visitDate";
+// the form shows it as the "visitDay" box. Anything else becomes a toast.
+function showApiErrors(error, setError) {
+  const fields = Object.entries(error.fields ?? {});
+  fields.forEach(([field, message], index) => {
+    const formField = field === "visitDate" ? "visitDay" : field;
+    setError(formField, { type: "server", message }, { shouldFocus: index === 0 });
+  });
+  if (fields.length === 0) toast.error(error.message);
 }

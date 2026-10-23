@@ -1,7 +1,6 @@
 import { Suspense } from "react";
 
-import { PageSkeleton } from "@/components/shared/PageSkeleton";
-import { ServerUnreachable } from "@/components/shared/ServerUnreachable";
+import { PageSkeleton, ServerUnreachable } from "@/components/shared/common";
 import { isServerUnreachable, requireAdmin, requireUser, unreachableReason } from "@/lib/session";
 
 // Wrap the content of every signed-in page:
