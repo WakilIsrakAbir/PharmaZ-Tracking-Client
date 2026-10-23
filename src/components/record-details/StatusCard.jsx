@@ -179,10 +179,10 @@ function StatusUpdate({ record }) {
 // What the API needs for each step: its id (when it is already saved), the title, and done or not.
 const stepsToSave = (steps) => steps.map(({ id, title, done }) => ({ id, title, done }));
 
-// Ongoing / Setup / Implementation as three buttons. The chosen one is filled in.
+// Ongoing / Setup / Implementation / Support as four buttons in a 2 × 2 grid. The chosen one is filled in.
 function StatusPicker({ value, onChange }) {
   return (
-    <div role="radiogroup" aria-label="Status" className="flex flex-wrap gap-1.5">
+    <div role="radiogroup" aria-label="Status" className="grid grid-cols-2 gap-1.5">
       {Object.entries(STATUSES).map(([status, { label, dot }]) => {
         const isChosen = value === status;
         return (
@@ -193,7 +193,7 @@ function StatusPicker({ value, onChange }) {
             aria-checked={isChosen}
             onClick={() => onChange(status)}
             className={cn(
-              "flex flex-auto items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold whitespace-nowrap transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
+              "flex items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold whitespace-nowrap transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
               isChosen ? "border-primary bg-primary text-primary-foreground" : "border-input bg-background text-muted-foreground hover:text-foreground",
             )}
           >
