@@ -30,10 +30,10 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files: only the example and the production one (no secrets, just the API's public address)
-.env*
-!.env.example
-!.env.production
+# env files: .env and .env.production are in git (no secrets, just the API address);
+# a personal .env.local would override them and stays out of git
+.env.local
+.env.*.local
 
 # vercel
 .vercel
