@@ -12,6 +12,15 @@ You need Node.js 22.9 or newer (24 recommended).
 2. Copy `.env.example` to `.env.local`. It says where the API is (`API_URL=http://localhost:4000`).
 3. Start the API (see the server's README), then run `npm run dev` and open http://localhost:3000.
 
+## Going live on Vercel
+
+1. Put the API live first (see the server's README, "Going live on Vercel").
+2. `.env.production` holds the live API's address (`API_URL`). Change it there if the API moves.
+3. In Vercel: **Add New → Project**, import this repository (Next.js is detected), **Deploy**. No environment variables are needed.
+4. Open the web app, sign in, then set `CLIENT_ORIGIN` in the API's Vercel project to the web app's address and redeploy the API.
+
+Every push to `main` deploys again by itself.
+
 ## Commands
 
 | Command | What it does |
