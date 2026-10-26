@@ -145,14 +145,18 @@ export function Dashboard() {
         <div ref={detailsRef} className="scroll-mt-20">
           {view.selected ? (
             <div className="space-y-3">
-              <button
-                type="button"
-                onClick={() => show({ type: null, id: null })}
-                className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground"
-              >
-                <ArrowLeft className="size-4" />{" "}
-                {formatDate(dhakaDateTime(view.day, "12:00"), "EEEE, d MMMM")}
-              </button>
+              {/* "← Friday, 23 October" goes back to the day's list. On large screens it stays under the
+                  fixed header while the details scroll, with the page background so nothing shows through. */}
+              <div className="xl:sticky xl:top-28 xl:z-10 xl:-my-1 xl:bg-canvas/90 xl:py-1 xl:backdrop-blur-sm">
+                <button
+                  type="button"
+                  onClick={() => show({ type: null, id: null })}
+                  className="inline-flex items-center gap-1.5 rounded-md text-sm font-medium text-muted-foreground outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50"
+                >
+                  <ArrowLeft className="size-4" />{" "}
+                  {formatDate(dhakaDateTime(view.day, "12:00"), "EEEE, d MMMM")}
+                </button>
+              </div>
               <RecordDetails
                 type={view.selected.type}
                 id={view.selected.id}
