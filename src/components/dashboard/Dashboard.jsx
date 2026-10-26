@@ -61,8 +61,11 @@ export function Dashboard() {
   const visitsToday = visits.filter((visit) => dayKey(visit.visitDate) === today).length;
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <div className="space-y-2">
+      {/* The greeting and the two "New … form" buttons stay at the top while the page scrolls (under the
+          top bar on phones). The strip has the page background and reaches the page edges, like the
+          back link on other pages, so the calendar scrolling under it doesn't show through. */}
+      <div className="sticky top-14 z-20 -mx-4 -mt-6 flex flex-col gap-4 bg-canvas/90 px-4 pt-6 pb-4 backdrop-blur-sm sm:-mx-6 sm:flex-row sm:items-end sm:justify-between sm:px-6 lg:top-0 lg:-mx-8 lg:-mt-8 lg:px-8 lg:pt-8">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">
             {greeting(now)}, {firstName(user?.name)}
@@ -95,7 +98,7 @@ export function Dashboard() {
           onPickVisit={(visit, day) => showDetails({ day, type: visit.type, id: visit.id })}
         />
 
-        <div ref={detailsRef} className="scroll-mt-20 xl:sticky xl:top-6">
+        <div ref={detailsRef} className="scroll-mt-20 xl:sticky xl:top-32">
           {view.selected ? (
             <div className="space-y-3">
               <button
