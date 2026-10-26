@@ -13,7 +13,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { CalendarDays, ExternalLink, Mail, MapPin, MessageCircle, Pencil, Phone, SearchX, StickyNote, Trash2 } from "lucide-react";
+import { CalendarDays, ExternalLink, LoaderCircle, Mail, MapPin, MessageCircle, Pencil, Phone, SearchX, StickyNote, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { useUser } from "@/components/app-shell/useUser";
@@ -281,11 +281,52 @@ function pharmacyRows(record) {
   ];
 }
 
+// While the form loads: the same two white cards as the real thing, with grey lines where the text
+// will be, and a "Loading…" line on top, so it's clear something is on its way (two flat grey
+// blocks looked like an empty panel).
 function DetailsSkeleton() {
   return (
     <div className="space-y-3" aria-busy="true" aria-label="Loading">
-      <Skeleton className="h-72 w-full rounded-xl" />
-      <Skeleton className="h-64 w-full rounded-xl" />
+      <p className="flex items-center gap-2 text-sm text-muted-foreground">
+        <LoaderCircle className="size-4 animate-spin" aria-hidden="true" /> Loading the form…
+      </p>
+      <div className="divide-y rounded-xl border bg-card">
+        <div className="flex items-start gap-4 p-4 sm:p-5">
+          <Skeleton className="size-16 rounded-xl" />
+          <div className="flex-1 space-y-2 pt-1">
+            <Skeleton className="h-4 w-32" />
+            <Skeleton className="h-5 w-48" />
+          </div>
+        </div>
+        <div className="space-y-4 p-4 sm:p-5">
+          <SkeletonRow />
+          <SkeletonRow />
+        </div>
+        <div className="space-y-4 p-4 sm:p-5">
+          <SkeletonRow />
+          <div className="grid grid-cols-2 gap-2">
+            <Skeleton className="h-8" />
+            <Skeleton className="h-8" />
+          </div>
+        </div>
+      </div>
+      <div className="rounded-xl border bg-card p-4 sm:p-5">
+        <Skeleton className="mb-4 h-4 w-16" />
+        <Skeleton className="h-40 w-full rounded-lg" />
+      </div>
+    </div>
+  );
+}
+
+// An icon, a label and a value, as grey lines.
+function SkeletonRow() {
+  return (
+    <div className="flex gap-3">
+      <Skeleton className="mt-0.5 size-4 rounded-full" />
+      <div className="flex-1 space-y-2">
+        <Skeleton className="h-3 w-20" />
+        <Skeleton className="h-4 w-3/4" />
+      </div>
     </div>
   );
 }
