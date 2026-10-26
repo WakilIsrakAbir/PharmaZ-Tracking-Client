@@ -22,7 +22,7 @@ const FILTERS = [
   { value: "pharmacy", label: "Pharmacies" },
 ];
 const CHIPS_PER_DAY = 3; // more than this shows "+N more"
-const CHIPS_PER_DAY_XL = 2; // on large screens the calendar fits the screen, so the cells are shorter: one-line chips, two per day
+const CHIPS_PER_DAY_XL = 1; // on large screens the calendar fits the screen, so the cells are short: one one-line chip per day, the rest as "+N more"
 
 export function MonthCalendar({ month, days, visitsByDay, today, pickedDay, pickedVisitId, filter, loading, onChangeMonth, onToday, onFilter, onPickDay, onPickVisit }) {
   return (
