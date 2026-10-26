@@ -147,7 +147,7 @@ export function Dashboard() {
             <div className="space-y-3">
               {/* "← Friday, 23 October" goes back to the day's list. On large screens it stays under the
                   fixed header while the details scroll, with the page background so nothing shows through. */}
-              <div className="xl:sticky xl:top-28 xl:z-10 xl:-my-1 xl:bg-canvas/90 xl:py-1 xl:backdrop-blur-sm">
+              <div className="xl:sticky xl:top-24 xl:z-10 xl:-mt-1 xl:-mb-1 xl:bg-canvas xl:pt-6 xl:pb-2">
                 <button
                   type="button"
                   onClick={() => show({ type: null, id: null })}
