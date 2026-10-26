@@ -106,7 +106,7 @@ function DayCell({ date, day, visits, inMonth, isToday, isPicked, pickedVisitId,
     <div
       onClick={() => onPickDay(day)}
       className={cn(
-        "relative min-h-16 cursor-pointer overflow-hidden border-r border-b p-1.5 transition-colors nth-[7n]:border-r-0 nth-last-[-n+7]:border-b-0 hover:bg-muted/40 sm:min-h-28 xl:min-h-0 xl:p-1",
+        "relative min-h-16 cursor-pointer overflow-hidden border-r border-b p-1.5 transition-colors nth-[7n]:border-r-0 nth-last-[-n+7]:border-b-0 hover:bg-muted/40 sm:min-h-28 xl:flex xl:min-h-0 xl:flex-col xl:p-1",
         !inMonth && "bg-muted/30",
         inMonth && isFriday && "bg-muted/25",
         isPicked && "bg-secondary/70 hover:bg-secondary/70",
@@ -129,7 +129,18 @@ function DayCell({ date, day, visits, inMonth, isToday, isPicked, pickedVisitId,
       >
         {date.getDate()}
       </button>
-      <div className="mt-1 hidden space-y-1 sm:block">
+      {/* On large screens only one chip fits; the rest are counted beside the date, as a small pill in the
+          top-right corner. It opens the day on the right, where every visit is listed. */}
+      {hiddenCountXl > 0 && (
+        <MoreVisits
+          count={hiddenCountXl}
+          total={visits.length}
+          onClick={() => onPickDay(day)}
+          className="absolute top-1.5 right-1.5 hidden rounded-full bg-primary/10 px-2 py-0.5 text-[10px] hover:bg-primary/20 xl:inline-flex"
+        />
+      )}
+      {/* The chips. On large screens the one chip sits in the middle of the space under the date. */}
+      <div className="mt-1 hidden space-y-1 sm:block xl:flex xl:min-h-0 xl:flex-1 xl:flex-col xl:justify-center">
         {visits.slice(0, CHIPS_PER_DAY).map((visit, index) => (
           <VisitChip
             key={visit.id}
@@ -142,10 +153,8 @@ function DayCell({ date, day, visits, inMonth, isToday, isPicked, pickedVisitId,
             }}
           />
         ))}
-        {/* The visits that don't fit, as a row under the chips. It opens the day on the right, where every
-            visit is listed. Large screens fit fewer chips, so their count differs. */}
-        {hiddenCount > 0 && <MoreVisits count={hiddenCount} total={visits.length} onClick={() => onPickDay(day)} className="xl:hidden" />}
-        {hiddenCountXl > 0 && <MoreVisits count={hiddenCountXl} total={visits.length} onClick={() => onPickDay(day)} className="hidden xl:flex" />}
+        {/* Smaller screens fit three chips; the rest are a row under them. */}
+        {hiddenCount > 0 && <MoreVisits count={hiddenCount} total={visits.length} onClick={() => onPickDay(day)} className="flex w-full rounded-md px-1.5 py-0.5 text-[11px] hover:bg-primary/10 xl:hidden" />}
       </div>
 
       {visits.length > 0 && (
@@ -159,7 +168,7 @@ function DayCell({ date, day, visits, inMonth, isToday, isPicked, pickedVisitId,
   );
 }
 
-// "+2 more" under the chips of a busy day: a plain row in the chips' shape, in the brand color.
+// "+2 more" for a busy day, in the brand color. The caller decides the shape (a pill beside the date, or a row under the chips).
 function MoreVisits({ count, total, onClick, className }) {
   return (
     <button
@@ -169,10 +178,7 @@ function MoreVisits({ count, total, onClick, className }) {
         onClick();
       }}
       title={`${total} visits this day. Click to see them all`}
-      className={cn(
-        "flex w-full items-center rounded-md px-1.5 py-0.5 text-left text-[11px] font-semibold text-primary outline-none hover:bg-primary/10 focus-visible:ring-2 focus-visible:ring-ring/50",
-        className,
-      )}
+      className={cn("items-center text-left font-semibold text-primary tabular-nums outline-none focus-visible:ring-2 focus-visible:ring-ring/50", className)}
     >
       +{count} more
     </button>
