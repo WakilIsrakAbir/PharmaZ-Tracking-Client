@@ -9,7 +9,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ListChecks, LoaderCircle, Pencil, PencilLine, Phone, Plus, UserPlus, X } from "lucide-react";
+import { ChevronDown, ChevronUp, ListChecks, LoaderCircle, Pencil, PencilLine, Phone, Plus, UserPlus, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { useUser } from "@/components/app-shell/useUser";
@@ -304,16 +304,24 @@ function ImplementationSteps({ steps, onChange }) {
 
 // Newest first: the status, the visit date, the steps done, the note, and who changed it when.
 // The oldest entry is the form being submitted: who submitted it, and when, is shown under "Submitted by".
+// Only the newest two show at first; "See N more" unfolds the rest, so a long history doesn't push
+// "Submitted by" far down the card.
+const HISTORY_PREVIEW = 2;
+
 function History({ history }) {
+  const [expanded, setExpanded] = useState(false);
   const newestFirst = [...history].reverse();
+  const shown = expanded ? newestFirst : newestFirst.slice(0, HISTORY_PREVIEW);
+  const hidden = newestFirst.length - shown.length;
   return (
     <ol className="space-y-4">
-      {newestFirst.map((entry, index) => {
+      {shown.map((entry, index) => {
         const isOldest = index === newestFirst.length - 1;
+        const isLastShown = index === shown.length - 1;
         return (
           <li key={`${entry.at}-${index}`} className="relative pl-5">
             <span className={cn("absolute top-1.5 left-0 size-2.5 rounded-full ring-4 ring-card", STATUSES[entry.status]?.dot)} aria-hidden="true" />
-            {!isOldest && <span className="absolute top-4 -bottom-5 left-[4.5px] w-px bg-border" aria-hidden="true" />}
+            {!isLastShown && <span className="absolute top-4 -bottom-5 left-[4.5px] w-px bg-border" aria-hidden="true" />}
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
               <span className="font-semibold">{STATUSES[entry.status]?.label}</span>
               <span className="text-muted-foreground">· visit {formatDate(entry.visitDate, "d MMM, h:mm a")}</span>
@@ -334,6 +342,25 @@ function History({ history }) {
           </li>
         );
       })}
+      {(hidden > 0 || expanded) && (
+        <li className="pl-5">
+          <button
+            type="button"
+            onClick={() => setExpanded(!expanded)}
+            className="inline-flex items-center gap-1 text-sm font-medium text-primary outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring/50"
+          >
+            {expanded ? (
+              <>
+                <ChevronUp className="size-4" aria-hidden="true" /> Show less
+              </>
+            ) : (
+              <>
+                <ChevronDown className="size-4" aria-hidden="true" /> See {hidden} more
+              </>
+            )}
+          </button>
+        </li>
+      )}
     </ol>
   );
 }
