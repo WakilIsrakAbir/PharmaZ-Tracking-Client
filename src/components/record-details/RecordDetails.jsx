@@ -51,8 +51,8 @@ export function RecordDetails({ type, id, layout = "page" }) {
           <DetailsCard record={record} />
           <FormCard record={record} />
         </div>
-        {/* Below the fixed "← back" link at the top of the screen. */}
-        <div className="lg:sticky lg:top-14">
+        {/* Below the fixed header (back link, title and buttons) at the top of the screen. */}
+        <div className="lg:sticky lg:top-36">
           <StatusCard record={record} />
         </div>
       </div>
