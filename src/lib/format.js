@@ -122,6 +122,17 @@ export function initials(name = "") {
 
 export const firstName = (name = "") => name.trim().split(/\s+/)[0] ?? "";
 
+// What to tell someone after saving, from the API's meta.email: who got the email, who didn't,
+// or that email isn't set up on the server. `saved` is the first sentence, e.g. "Changes saved."
+export function emailSummary(saved, { configured, sent = [], failed = [] } = {}) {
+  const parts = [saved];
+  if (sent.length === 0 && failed.length === 0) return saved;
+  if (!configured) return `${saved} Email isn't set up on the server, so no one was emailed.`;
+  if (sent.length) parts.push(`Emailed ${sent.join(", ")}.`);
+  if (failed.length) parts.push(`The email to ${failed.join(", ")} couldn't be sent.`);
+  return parts.join(" ");
+}
+
 // Who is on a form, in one line: "by Wakil · with Rafi, Sumi". `showSubmitter` is false for a
 // marketing person's own lists, where "by me" would be noise. Empty when there is nothing to say.
 export function peopleLine({ createdBy, assignedTo = [] }, { showSubmitter = true } = {}) {

@@ -80,11 +80,14 @@ export function useCalendar(from, to) {
 }
 
 // After any change: refresh lists and the calendar, and keep the changed record.
+// Resolves with the API's whole answer, { data: record, meta }: `meta.email` says whether the
+// emails to the assigned people went out (see emailSummary in lib/format.js).
 function useRecordMutation(type, request) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (input) => (await request(input))?.data,
-    onSuccess: (record) => {
+    mutationFn: (input) => request(input),
+    onSuccess: (payload) => {
+      const record = payload?.data;
       if (record) queryClient.setQueryData(["record", type, record.id], record);
       queryClient.invalidateQueries({ queryKey: ["records", type] });
       queryClient.invalidateQueries({ queryKey: ["calendar"] });
@@ -109,19 +112,9 @@ export const useUpdateStatus = (type) =>
 export const useDeleteRecord = (type) =>
   useRecordMutation(type, (id) => api(`${pathFor(type)}/${id}`, { method: "DELETE" }));
 
-// Admins only: { id, userIds } replaces who is assigned to a record. Unlike the other mutations this
-// returns the whole answer, because `meta.email` says whether the assignment emails went out.
-export function useAssign(type) {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ id, userIds }) => api(`${pathFor(type)}/${id}/assignees`, { method: "PUT", body: { userIds } }),
-    onSuccess: ({ data: record }) => {
-      queryClient.setQueryData(["record", type, record.id], record);
-      queryClient.invalidateQueries({ queryKey: ["records", type] });
-      queryClient.invalidateQueries({ queryKey: ["calendar"] });
-    },
-  });
-}
+// Admins only: { id, emails } replaces who is assigned to a record (teammates or any email address).
+export const useAssign = (type) =>
+  useRecordMutation(type, ({ id, emails }) => api(`${pathFor(type)}/${id}/assignees`, { method: "PUT", body: { emails } }));
 
 // ---------------------------------------------------------------------------
 // Team accounts (admin). The team is small, so the whole list is loaded once.

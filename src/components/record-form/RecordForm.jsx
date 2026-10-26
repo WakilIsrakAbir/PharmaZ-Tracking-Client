@@ -26,7 +26,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useRecord, useSaveRecord } from "@/lib/api";
 import { FIELDS, TYPES } from "@/lib/constants";
-import { dashboardLink, dayKey, dhakaDateTime, formatDate, formatPhone, toDateInput, toTimeInput } from "@/lib/format";
+import { dashboardLink, dayKey, dhakaDateTime, emailSummary, formatDate, formatPhone, toDateInput, toTimeInput } from "@/lib/format";
 
 // ---------------------------------------------------------------------------
 // The two pages
@@ -73,9 +73,10 @@ function RecordForm({ type, record, visitDay }) {
   async function onSubmit(formValues) {
     const values = toApiValues(type, formValues);
     try {
-      const saved = await save.mutateAsync({ id: record?.id, values, photo: photo?.file });
+      const { data: saved, meta } = await save.mutateAsync({ id: record?.id, values, photo: photo?.file });
       if (isEditing) {
-        toast.success("Changes saved.");
+        // Everyone assigned to the form gets the new version by email.
+        toast.success(emailSummary("Changes saved.", meta?.email));
         router.push(`${path}/${saved.id}`);
         return;
       }

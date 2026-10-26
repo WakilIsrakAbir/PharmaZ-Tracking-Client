@@ -34,9 +34,11 @@ export async function getSessionUser() {
     console.warn(`⚠ Can't reach the API at ${API_URL} (${error.cause?.code ?? error.message}). Is it running?`);
     throw serverUnreachable();
   }
-  if (response.status === 503) {
+  // 503: the API can't reach its database (it says why). Any other 5xx is the host having a bad
+  // moment (a cold start, a timeout): the same calm page, which tries again by itself.
+  if (response.status >= 500) {
     const body = await response.json().catch(() => null);
-    throw serverUnreachable(body?.error?.message);
+    throw serverUnreachable(response.status === 503 ? body?.error?.message : null);
   }
   if (response.status === 401) return null;
   if (!response.ok) throw new Error(`The API could not load your account (status ${response.status}).`);

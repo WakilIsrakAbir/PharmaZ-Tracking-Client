@@ -79,8 +79,8 @@ function CardPart({ title, action, children }) {
   );
 }
 
-// The teammates an admin assigned to this form. They see it and can update it, like the submitter.
-// Admins get an "Assign" button; everyone else just sees who is on it.
+// The people an admin assigned to this form: teammates (who see and can update it, like the
+// submitter) or outside email addresses (who only get the emails). Admins get an "Assign" button.
 function AssignedTo({ record }) {
   const isAdmin = useUser()?.role === "admin";
   const [assigning, setAssigning] = useState(false);
@@ -95,12 +95,12 @@ function AssignedTo({ record }) {
   return (
     <CardPart title="Assigned to" action={assignButton}>
       {people.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{isAdmin ? "No one yet. Assign teammates and they'll get the form by email." : "No one yet."}</p>
+        <p className="text-sm text-muted-foreground">{isAdmin ? "No one yet. Assign teammates or any email address, and they'll get the form by email." : "No one yet."}</p>
       ) : (
         <ul className="space-y-3">
           {people.map((person) => (
-            <li key={person.id} className="flex items-center gap-3">
-              <Avatar name={person.name} className="size-9" />
+            <li key={person.email} className="flex items-center gap-3">
+              <Avatar name={person.teammate ? person.name : "@"} className="size-9" />
               <div className="min-w-0 flex-1 text-sm">
                 <p className="truncate font-medium">{person.name}</p>
                 {person.phone ? (
@@ -109,7 +109,7 @@ function AssignedTo({ record }) {
                     {formatPhone(person.phone)}
                   </a>
                 ) : (
-                  <p className="truncate text-xs text-muted-foreground">{person.email}</p>
+                  <p className="truncate text-xs text-muted-foreground">{person.teammate ? person.email : "Outside the team · gets the emails only"}</p>
                 )}
               </div>
             </li>
