@@ -129,22 +129,6 @@ function DayCell({ date, day, visits, inMonth, isToday, isPicked, pickedVisitId,
       >
         {date.getDate()}
       </button>
-      {/* On large screens the visits that don't fit are counted next to the date. The count is a button:
-          it opens the day on the right, where every visit is listed. */}
-      {hiddenCountXl > 0 && (
-        <button
-          type="button"
-          onClick={(event) => {
-            event.stopPropagation();
-            onPickDay(day);
-          }}
-          title={`${visits.length} visits this day. Click to see them all`}
-          className="absolute top-1 right-1 hidden rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary tabular-nums outline-none hover:bg-primary/20 focus-visible:ring-2 focus-visible:ring-ring/50 xl:inline-block"
-        >
-          +{hiddenCountXl} more
-        </button>
-      )}
-
       <div className="mt-1 hidden space-y-1 sm:block">
         {visits.slice(0, CHIPS_PER_DAY).map((visit, index) => (
           <VisitChip
@@ -158,7 +142,10 @@ function DayCell({ date, day, visits, inMonth, isToday, isPicked, pickedVisitId,
             }}
           />
         ))}
-        {hiddenCount > 0 && <p className="px-1 text-[11px] font-medium text-muted-foreground xl:hidden">+{hiddenCount} more</p>}
+        {/* The visits that don't fit, as a row under the chips. It opens the day on the right, where every
+            visit is listed. Large screens fit fewer chips, so their count differs. */}
+        {hiddenCount > 0 && <MoreVisits count={hiddenCount} total={visits.length} onClick={() => onPickDay(day)} className="xl:hidden" />}
+        {hiddenCountXl > 0 && <MoreVisits count={hiddenCountXl} total={visits.length} onClick={() => onPickDay(day)} className="hidden xl:flex" />}
       </div>
 
       {visits.length > 0 && (
@@ -169,6 +156,26 @@ function DayCell({ date, day, visits, inMonth, isToday, isPicked, pickedVisitId,
         </div>
       )}
     </div>
+  );
+}
+
+// "+2 more" under the chips of a busy day: a plain row in the chips' shape, in the brand color.
+function MoreVisits({ count, total, onClick, className }) {
+  return (
+    <button
+      type="button"
+      onClick={(event) => {
+        event.stopPropagation();
+        onClick();
+      }}
+      title={`${total} visits this day. Click to see them all`}
+      className={cn(
+        "flex w-full items-center rounded-md px-1.5 py-0.5 text-left text-[11px] font-semibold text-primary outline-none hover:bg-primary/10 focus-visible:ring-2 focus-visible:ring-ring/50",
+        className,
+      )}
+    >
+      +{count} more
+    </button>
   );
 }
 
