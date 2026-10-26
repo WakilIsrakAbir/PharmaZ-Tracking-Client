@@ -25,7 +25,7 @@ const CHIPS_PER_DAY = 3; // more than this shows "+N more"
 
 export function MonthCalendar({ month, days, visitsByDay, today, pickedDay, pickedVisitId, filter, loading, onChangeMonth, onToday, onFilter, onPickDay, onPickVisit }) {
   return (
-    <section aria-label="Calendar" className="overflow-hidden rounded-xl border bg-card">
+    <section aria-label="Calendar" className="flex h-full flex-col overflow-hidden rounded-xl border bg-card">
       <header className="flex flex-wrap items-center gap-x-4 gap-y-3 border-b px-4 py-3">
         <h2 className="min-w-36 text-lg font-semibold" aria-live="polite">
           {format(monthStart(month), "MMMM yyyy")}
@@ -68,7 +68,8 @@ export function MonthCalendar({ month, days, visitsByDay, today, pickedDay, pick
         ))}
       </div>
 
-      <div className={cn("grid grid-cols-7 transition-opacity", loading && "opacity-60")}>
+      {/* On large screens the rows share the height that is left, so the whole month fits on the screen. */}
+      <div className={cn("grid min-h-0 flex-1 auto-rows-fr grid-cols-7 transition-opacity", loading && "opacity-60")}>
         {days.map((date) => {
           const day = format(date, "yyyy-MM-dd");
           return (
@@ -102,7 +103,7 @@ function DayCell({ date, day, visits, inMonth, isToday, isPicked, pickedVisitId,
     <div
       onClick={() => onPickDay(day)}
       className={cn(
-        "relative min-h-16 cursor-pointer border-r border-b p-1.5 transition-colors nth-[7n]:border-r-0 nth-last-[-n+7]:border-b-0 hover:bg-muted/40 sm:min-h-28",
+        "relative min-h-16 cursor-pointer overflow-hidden border-r border-b p-1.5 transition-colors nth-[7n]:border-r-0 nth-last-[-n+7]:border-b-0 hover:bg-muted/40 sm:min-h-28 xl:min-h-0",
         !inMonth && "bg-muted/30",
         inMonth && isFriday && "bg-muted/25",
         isPicked && "bg-secondary/70 hover:bg-secondary/70",

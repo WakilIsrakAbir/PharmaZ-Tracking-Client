@@ -104,9 +104,9 @@ export function Dashboard() {
       </div>
 
       <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(0,1fr)_400px]">
-        {/* On large screens the calendar stays put under the fixed header while the details on the right
-            scroll: a long details card (history, assignees…) should never scroll the calendar away. */}
-        <div className="xl:sticky xl:top-32">
+        {/* On large screens the calendar is sized to the screen (under the fixed header) and stays put,
+            while the details on the right scroll: a long details card should never scroll the calendar away. */}
+        <div className="xl:sticky xl:top-32 xl:h-[calc(100dvh-9.5rem)]">
           <MonthCalendar
             month={view.month}
             days={days}
