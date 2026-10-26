@@ -129,11 +129,20 @@ function DayCell({ date, day, visits, inMonth, isToday, isPicked, pickedVisitId,
       >
         {date.getDate()}
       </button>
-      {/* On large screens the visits that don't fit are counted next to the date; click the day to see them all. */}
+      {/* On large screens the visits that don't fit are counted next to the date. The count is a button:
+          it opens the day on the right, where every visit is listed. */}
       {hiddenCountXl > 0 && (
-        <span className="absolute top-1.5 right-1.5 hidden rounded-full bg-muted px-1.5 text-[10px] font-semibold text-muted-foreground tabular-nums xl:inline-block" aria-hidden="true">
-          +{hiddenCountXl}
-        </span>
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation();
+            onPickDay(day);
+          }}
+          title={`${visits.length} visits this day. Click to see them all`}
+          className="absolute top-1 right-1 hidden rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary tabular-nums outline-none hover:bg-primary/20 focus-visible:ring-2 focus-visible:ring-ring/50 xl:inline-block"
+        >
+          +{hiddenCountXl} more
+        </button>
       )}
 
       <div className="mt-1 hidden space-y-1 sm:block">

@@ -120,6 +120,9 @@
   }
   html {
     @apply font-sans;
+    /* Keep room for the scrollbar even when the page is short, so the layout doesn't shift (and the
+       calendar doesn't narrow) when a long details panel makes the page scroll. */
+    scrollbar-gutter: stable;
   }
   body {
     @apply bg-background text-foreground;
