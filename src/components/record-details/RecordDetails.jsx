@@ -174,10 +174,13 @@ function DetailsCard({ record }) {
             </a>
           </Row>
         )}
+        {/* Notes get a soft green box, so they catch the eye among the grey rows. */}
         {record.notes && (
-          <Row icon={StickyNote} label="Notes">
-            <p className="font-normal whitespace-pre-line">{record.notes}</p>
-          </Row>
+          <div className="rounded-lg border border-status-implementation/40 bg-status-implementation-soft p-3">
+            <Row icon={StickyNote} label="Notes">
+              <p className="font-normal whitespace-pre-line">{record.notes}</p>
+            </Row>
+          </div>
         )}
       </div>
     </section>
