@@ -11,7 +11,7 @@ import Link from "next/link";
 import { io } from "next/cache";
 import { useSearchParams } from "next/navigation";
 import { addDays, addMonths, format } from "date-fns";
-import { ArrowLeft, Plus, UserRound } from "lucide-react";
+import { ArrowLeft, CalendarCheck, Plus, UserRound } from "lucide-react";
 
 import { useUser } from "@/components/app-shell/useUser";
 import {
@@ -105,14 +105,20 @@ export function Dashboard() {
           back link on other pages, so the calendar scrolling under it doesn't show through. */}
       <div className="sticky top-14 z-20 -mx-4 -mt-6 flex flex-col gap-4 bg-canvas/90 px-4 pt-6 pb-4 backdrop-blur-sm sm:-mx-6 sm:flex-row sm:items-end sm:justify-between sm:px-6 lg:top-0 lg:-mx-8 lg:-mt-8 lg:px-8 lg:pt-8">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">
-            {greeting(now)}, {firstName(user?.name)}
+          {/* The greeting, with today's visit count as a green pill right after the name. */}
+          <h1 className="flex flex-wrap items-center gap-x-3 gap-y-1 text-2xl font-semibold tracking-tight">
+            <span>
+              {greeting(now)}, {firstName(user?.name)}
+            </span>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-status-implementation-soft px-2.5 py-0.5 text-sm font-semibold text-status-implementation-ink tabular-nums">
+              <CalendarCheck className="size-4" aria-hidden="true" />
+              {visitsToday === 0
+                ? "No visits today"
+                : `${visitsToday} visit${visitsToday === 1 ? "" : "s"} today`}
+            </span>
           </h1>
           <p className="mt-1 text-muted-foreground">
-            {formatDate(now, "EEEE, d MMMM yyyy")} ·{" "}
-            {visitsToday === 0
-              ? "no visits today"
-              : `${visitsToday} visit${visitsToday === 1 ? "" : "s"} today`}
+            {formatDate(now, "EEEE, d MMMM yyyy")}
           </p>
         </div>
         <NewFormButtons day={newFormDay} inline />

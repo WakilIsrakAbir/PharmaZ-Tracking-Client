@@ -125,6 +125,7 @@ function DayCell({ date, day, visits, inMonth, isToday, isPast, isPicked, picked
         inMonth && isFriday && "bg-muted/25",
         isPast && "bg-muted/50 hover:bg-muted/60",
         isPicked && "bg-secondary/70 hover:bg-secondary/70",
+        isToday && "bg-status-implementation-soft/70 hover:bg-status-implementation-soft", // today is green, never greyed like the past
       )}
       title={isPast ? "This day has passed: nothing new can be planned here" : undefined}
     >
@@ -139,8 +140,9 @@ function DayCell({ date, day, visits, inMonth, isToday, isPast, isPicked, picked
         className={cn(
           "flex size-7 items-center justify-center rounded-full text-sm tabular-nums outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
           (!inMonth || isPast) && "text-muted-foreground/60",
-          isToday && "bg-primary font-semibold text-primary-foreground",
+          isToday && "bg-status-implementation font-semibold text-white",
           isPicked && !isToday && "font-semibold ring-2 ring-primary",
+          isPicked && isToday && "ring-2 ring-status-implementation-ink ring-offset-1",
         )}
       >
         {date.getDate()}
