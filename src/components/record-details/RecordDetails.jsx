@@ -123,25 +123,27 @@ function DetailsCard({ record }) {
 
   return (
     <section aria-label="Details" className="@container divide-y overflow-hidden rounded-xl border bg-card">
-      {/* The name first, the badges under it, and the Assign button in the corner, so nothing wraps
-          around the button in the narrow dashboard panel. */}
+      {/* The badges on the top line (with the Assign button at its right end), then the name. The badges
+          have their own row, so the name never has to share space with the button. */}
       <div className="p-4 sm:p-5">
         <div className="flex items-start gap-4">
           <Avatar name={record.name} className="size-14 rounded-xl text-base" />
           <div className="min-w-0 flex-1">
-            <h2 className="text-lg leading-snug font-semibold text-balance">{record.name}</h2>
-            {subtitle && <p className="text-sm text-muted-foreground">{subtitle}</p>}
-            <div className="mt-2 flex flex-wrap items-center gap-1.5">
-              <TypeBadge type={record.type} />
-              <StatusBadge status={record.status} steps={countSteps(record.implementationSteps)} />
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                <TypeBadge type={record.type} />
+                <StatusBadge status={record.status} steps={countSteps(record.implementationSteps)} />
+              </div>
+              {/* Only admins decide who goes (AssignDialog.jsx). */}
+              {isAdmin && (
+                <Button variant="outline" size="sm" className="shrink-0" onClick={() => setAssigning(true)}>
+                  <UserPlus /> Assign
+                </Button>
+              )}
             </div>
+            <h2 className="mt-2 text-lg leading-snug font-semibold text-balance">{record.name}</h2>
+            {subtitle && <p className="text-sm text-muted-foreground">{subtitle}</p>}
           </div>
-          {/* Only admins decide who goes (AssignDialog.jsx). */}
-          {isAdmin && (
-            <Button variant="outline" size="sm" className="shrink-0" onClick={() => setAssigning(true)}>
-              <UserPlus /> Assign
-            </Button>
-          )}
         </div>
 
         {/* The people on this form: who entered it, and who the admin sent. Two columns when the card
