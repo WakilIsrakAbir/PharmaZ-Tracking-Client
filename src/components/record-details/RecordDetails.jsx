@@ -122,17 +122,19 @@ function DetailsCard({ record }) {
   const [assigning, setAssigning] = useState(false);
 
   return (
-    <section aria-label="Details" className="divide-y overflow-hidden rounded-xl border bg-card">
+    <section aria-label="Details" className="@container divide-y overflow-hidden rounded-xl border bg-card">
+      {/* The name first, the badges under it, and the Assign button in the corner, so nothing wraps
+          around the button in the narrow dashboard panel. */}
       <div className="p-4 sm:p-5">
         <div className="flex items-start gap-4">
-          <Avatar name={record.name} className="size-16 rounded-xl text-lg" />
+          <Avatar name={record.name} className="size-14 rounded-xl text-base" />
           <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-1.5">
+            <h2 className="text-lg leading-snug font-semibold text-balance">{record.name}</h2>
+            {subtitle && <p className="text-sm text-muted-foreground">{subtitle}</p>}
+            <div className="mt-2 flex flex-wrap items-center gap-1.5">
               <TypeBadge type={record.type} />
               <StatusBadge status={record.status} steps={countSteps(record.implementationSteps)} />
             </div>
-            <h2 className="mt-2 text-lg leading-snug font-semibold">{record.name}</h2>
-            {subtitle && <p className="text-sm text-muted-foreground">{subtitle}</p>}
           </div>
           {/* Only admins decide who goes (AssignDialog.jsx). */}
           {isAdmin && (
@@ -142,26 +144,32 @@ function DetailsCard({ record }) {
           )}
         </div>
 
-        {/* The people on this form: who entered it, and who the admin sent. */}
-        <dl className="mt-4 space-y-2 border-t pt-4 text-sm">
-          <PeopleRow label="Submitted by">
+        {/* The people on this form: who entered it, and who the admin sent. Two columns when the card
+            is wide enough (the full page), one under the other in the dashboard panel. */}
+        <div className="mt-4 grid gap-4 border-t pt-4 @md:grid-cols-2">
+          <div>
+            <h4 className="mb-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase">Submitted by</h4>
             {record.createdBy ? (
-              <>
-                <PersonChip person={record.createdBy} />
-                <span className="text-xs text-muted-foreground">on {formatDate(record.createdAt, "d MMM yyyy")}</span>
-              </>
+              <PersonRow person={record.createdBy} note={formatDate(record.createdAt, "d MMM yyyy")} />
             ) : (
-              <span className="text-muted-foreground">Unknown</span>
+              <p className="text-sm text-muted-foreground">Unknown</p>
             )}
-          </PeopleRow>
-          <PeopleRow label="Assigned to">
+          </div>
+          <div>
+            <h4 className="mb-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase">Assigned to</h4>
             {record.assignedTo.length === 0 ? (
-              <span className="text-muted-foreground">{isAdmin ? "No one yet. Assign teammates or any email address." : "No one yet."}</span>
+              <p className="text-sm text-muted-foreground">{isAdmin ? "No one yet. Use Assign to send a teammate or anyone by email." : "No one yet."}</p>
             ) : (
-              record.assignedTo.map((person) => <PersonChip key={person.email} person={person} />)
+              <ul className="space-y-2.5">
+                {record.assignedTo.map((person) => (
+                  <li key={person.email}>
+                    <PersonRow person={person} />
+                  </li>
+                ))}
+              </ul>
             )}
-          </PeopleRow>
-        </dl>
+          </div>
+        </div>
         {isAdmin && <AssignDialog open={assigning} onOpenChange={setAssigning} record={record} />}
       </div>
 
@@ -220,31 +228,28 @@ function DetailsCard({ record }) {
   );
 }
 
-// A label on the left, the people on the right (they wrap on narrow screens).
-function PeopleRow({ label, children }) {
-  return (
-    <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
-      <dt className="w-24 shrink-0 text-muted-foreground">{label}</dt>
-      <dd className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1.5">{children}</dd>
-    </div>
-  );
-}
-
-// A person as a small pill: avatar + name, and the phone number when there is one (tap to call).
-// Someone outside the team (`teammate: false`) has no account, so just the address, greyed.
-function PersonChip({ person }) {
+// One person: avatar, name (with a small note such as the date on the right), and under it the phone
+// number (tap to call). Someone outside the team (`teammate: false`) has no account, so the second
+// line is their email address and a reminder that they only get the emails.
+function PersonRow({ person, note }) {
   const outside = person.teammate === false;
   return (
-    <span className={cn("inline-flex max-w-full items-center gap-1.5 rounded-full border bg-background py-0.5 pr-2.5 pl-0.5 text-xs font-medium", outside && "text-muted-foreground")}>
-      <Avatar name={outside ? "@" : person.name} className="size-5 text-[0.6rem]" />
-      <span className="truncate">{person.name}</span>
-      {person.phone && (
-        <a href={`tel:${person.phone}`} className="text-primary tabular-nums hover:underline" title="Call">
-          {formatPhone(person.phone)}
-        </a>
-      )}
-      {outside && <span className="sr-only">, outside the team, gets the emails only</span>}
-    </span>
+    <div className="flex items-start gap-2.5">
+      <Avatar name={outside ? "@" : person.name} className={cn("size-8 text-xs", outside && "bg-muted text-muted-foreground")} />
+      <div className="min-w-0 flex-1 text-sm">
+        <p className="flex items-baseline justify-between gap-2">
+          <span className="truncate font-medium">{person.name}</span>
+          {note && <span className="shrink-0 text-xs text-muted-foreground">{note}</span>}
+        </p>
+        {person.phone ? (
+          <a href={`tel:${person.phone}`} className="text-xs font-medium text-primary tabular-nums hover:underline">
+            {formatPhone(person.phone)}
+          </a>
+        ) : (
+          <p className="truncate text-xs text-muted-foreground">{outside ? `${person.email} · outside the team` : "No phone number"}</p>
+        )}
+      </div>
+    </div>
   );
 }
 
