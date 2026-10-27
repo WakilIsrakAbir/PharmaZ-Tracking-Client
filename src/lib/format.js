@@ -134,11 +134,12 @@ export function emailSummary(saved, { configured, sent = [], failed = [] } = {})
 }
 
 // Who is on a form, in one line: "by Wakil · with Rafi, Sumi". `showSubmitter` is false for a
-// marketing person's own lists, where "by me" would be noise. Empty when there is nothing to say.
-export function peopleLine({ createdBy, assignedTo = [] }, { showSubmitter = true } = {}) {
+// marketing person's own lists, where "by me" would be noise; `showAssigned` is false where the
+// assigned people have a column of their own. Empty when there is nothing to say.
+export function peopleLine({ createdBy, assignedTo = [] }, { showSubmitter = true, showAssigned = true } = {}) {
   const parts = [];
   if (showSubmitter && createdBy) parts.push(`by ${createdBy.name}`);
-  if (assignedTo.length) parts.push(`with ${assignedTo.map((person) => person.name).join(", ")}`);
+  if (showAssigned && assignedTo.length) parts.push(`with ${assignedTo.map((person) => person.name).join(", ")}`);
   return parts.join(" · ");
 }
 

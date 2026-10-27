@@ -119,9 +119,10 @@ export function RecordList({ type }) {
           />
         ) : (
           <ul className="divide-y">
-            <li className="hidden grid-cols-[minmax(0,2fr)_minmax(0,1.6fr)_10rem_9rem_1.5rem] gap-4 px-4 py-2 text-xs font-semibold text-muted-foreground md:grid">
+            <li className={cn("hidden gap-4 px-4 py-2 text-xs font-semibold text-muted-foreground md:grid", COLUMNS)}>
               <span>{label}</span>
               <span>Location</span>
+              <span>Assigned to</span>
               <span>Date and time</span>
               <span>Status</span>
               <span />
@@ -136,14 +137,17 @@ export function RecordList({ type }) {
   );
 }
 
+// The columns of the list on large screens: who, where, who is assigned, when, status, and the arrow.
+const COLUMNS = "md:grid-cols-[minmax(0,2fr)_minmax(0,1.4fr)_minmax(0,1.4fr)_10rem_9rem_1.5rem]";
+
 function RecordRow({ record, path, showSubmitter }) {
-  const people = peopleLine(record, { showSubmitter });
+  const people = peopleLine(record, { showSubmitter, showAssigned: false }); // the assigned have their own column
   const place = record.type === "doctor" ? record.chamberName || record.address : [record.area, record.district].filter(Boolean).join(", ") || record.address;
   return (
     <li>
       <Link
         href={`${path}/${record.id}`}
-        className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1 px-4 py-3 transition-colors outline-none hover:bg-muted/40 focus-visible:bg-muted/40 md:grid-cols-[minmax(0,2fr)_minmax(0,1.6fr)_10rem_9rem_1.5rem]"
+        className={cn("grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1 px-4 py-3 transition-colors outline-none hover:bg-muted/40 focus-visible:bg-muted/40", COLUMNS)}
       >
         <div className="flex min-w-0 items-center gap-3">
           <Avatar name={record.name} photoUrl={record.photoUrl} className="size-10" />
@@ -159,6 +163,9 @@ function RecordRow({ record, path, showSubmitter }) {
           </p>
           {people && <p className="truncate text-xs text-muted-foreground">{people}</p>}
         </div>
+        <div className="col-span-2 row-start-4 min-w-0 md:col-span-1 md:row-start-auto">
+          <AssignedCell people={record.assignedTo} />
+        </div>
         <p className="col-span-2 row-start-3 text-sm md:col-span-1 md:row-start-auto">
           <span className="font-medium">{relativeDay(record.visitDate, new Date())}</span>
           <span className="text-muted-foreground"> · {formatDate(record.visitDate, "h:mm a")}</span>
@@ -169,6 +176,23 @@ function RecordRow({ record, path, showSubmitter }) {
         <ChevronRight className="hidden size-4 text-muted-foreground md:block" aria-hidden="true" />
       </Link>
     </li>
+  );
+}
+
+// Who is assigned, as a small stack of avatars and the names; a dash when nobody is. On phones it sits
+// under the location and says "Assigned to"; on larger screens the column header says it.
+function AssignedCell({ people }) {
+  if (people.length === 0) return <span className="hidden text-sm text-muted-foreground md:block">—</span>;
+  return (
+    <div className="flex min-w-0 items-center gap-2 text-sm">
+      <span className="text-xs text-muted-foreground md:hidden">Assigned to</span>
+      <span className="flex shrink-0 -space-x-1.5">
+        {people.slice(0, 3).map((person) => (
+          <Avatar key={person.email} name={person.teammate ? person.name : "@"} className="size-6 text-[0.6rem] ring-2 ring-card" />
+        ))}
+      </span>
+      <span className="truncate">{people.map((person) => person.name).join(", ")}</span>
+    </div>
   );
 }
 

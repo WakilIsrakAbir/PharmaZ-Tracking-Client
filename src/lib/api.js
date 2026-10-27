@@ -121,9 +121,10 @@ export const useUpdateStatus = (type) =>
 export const useDeleteRecord = (type) =>
   useRecordMutation(type, (id) => api(`${pathFor(type)}/${id}`, { method: "DELETE" }));
 
-// Admins only: { id, emails } replaces who is assigned to a record (teammates or any email address).
+// Admins only: { id, assignees: [{ email, name }] } replaces who is assigned to a record
+// (teammates by their address, or any outside address with a name).
 export const useAssign = (type) =>
-  useRecordMutation(type, ({ id, emails }) => api(`${pathFor(type)}/${id}/assignees`, { method: "PUT", body: { emails } }));
+  useRecordMutation(type, ({ id, assignees }) => api(`${pathFor(type)}/${id}/assignees`, { method: "PUT", body: { assignees } }));
 
 // ---------------------------------------------------------------------------
 // Team accounts (admin). The team is small, so the whole list is loaded once.

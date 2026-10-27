@@ -1,8 +1,8 @@
 "use client";
 
-// Admins only: choose who is assigned to a form. Teammates are ticked from the list; any other
-// email address can be typed in. Each newly assigned person is emailed the whole form by the API
-// (when email is set up on the server), and everyone assigned gets each later edit by email.
+// Admins only: choose who is assigned to a form. Teammates are ticked from the list; anyone outside
+// the team is added by email address, with a name. Each newly assigned person is emailed the whole
+// form by the API (when email is set up on the server), and everyone assigned gets each later edit.
 
 import { useState } from "react";
 import { LoaderCircle, Plus, Search, X } from "lucide-react";
@@ -31,26 +31,34 @@ export function AssignDialog({ open, onOpenChange, record }) {
 function AssignForm({ record, onDone }) {
   const { data: users = [], isPending } = useUsers();
   const assign = useAssign(record.type);
-  // The chosen email addresses: teammates ticked in the list, and outside addresses typed in.
-  const [chosen, setChosen] = useState(() => new Set(record.assignedTo.map((person) => person.email)));
+  // The chosen people, by email address: teammates ticked in the list (their name comes from their
+  // account), and outside addresses typed in with a name.
+  const [chosen, setChosen] = useState(() => new Map(record.assignedTo.map((person) => [person.email, person.teammate ? "" : person.name])));
   const [search, setSearch] = useState("");
-  const [outsideEmail, setOutsideEmail] = useState("");
+  const [outside, setOutside] = useState({ email: "", name: "" });
   const [outsideError, setOutsideError] = useState(null);
 
   const teamEmails = new Set(users.map((user) => user.email));
-  const outsiders = [...chosen].filter((email) => !teamEmails.has(email));
+  const outsiders = [...chosen].filter(([email]) => !teamEmails.has(email));
   // Only active accounts can be ticked; someone already assigned but since deactivated stays listed, so they can be removed.
   const people = users.filter((user) => user.isActive || chosen.has(user.email)).filter((user) => matchesSearch(user, search));
 
-  function toggle(email) {
-    const next = new Set(chosen);
+  function toggleTeammate(email) {
+    const next = new Map(chosen);
     if (next.has(email)) next.delete(email);
-    else next.add(email);
+    else next.set(email, "");
     setChosen(next);
   }
 
-  function addOutsideEmail() {
-    const email = outsideEmail.trim().toLowerCase();
+  function removeOutsider(email) {
+    const next = new Map(chosen);
+    next.delete(email);
+    setChosen(next);
+  }
+
+  function addOutsider() {
+    const email = outside.email.trim().toLowerCase();
+    const name = outside.name.trim();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       setOutsideError("Please enter a valid email address.");
       return;
@@ -59,14 +67,15 @@ function AssignForm({ record, onDone }) {
       setOutsideError("That's a teammate: tick them in the list above.");
       return;
     }
-    setChosen(new Set(chosen).add(email));
-    setOutsideEmail("");
+    setChosen(new Map(chosen).set(email, name));
+    setOutside({ email: "", name: "" });
     setOutsideError(null);
   }
 
   async function save() {
+    const assignees = [...chosen].map(([email, name]) => (name ? { email, name } : { email }));
     try {
-      const { meta } = await assign.mutateAsync({ id: record.id, emails: [...chosen] });
+      const { meta } = await assign.mutateAsync({ id: record.id, assignees });
       toast.success(emailSummary("Assignments saved.", meta?.email));
       onDone();
     } catch (error) {
@@ -96,7 +105,7 @@ function AssignForm({ record, onDone }) {
         />
       </div>
 
-      <ul className="max-h-56 divide-y overflow-y-auto rounded-lg border" aria-label="Teammates">
+      <ul className="max-h-52 divide-y overflow-y-auto rounded-lg border" aria-label="Teammates">
         {isPending &&
           [0, 1, 2].map((row) => (
             <li key={row} className="flex items-center gap-3 p-3">
@@ -108,7 +117,7 @@ function AssignForm({ record, onDone }) {
         {people.map((user) => (
           <li key={user.id}>
             <label className="flex cursor-pointer items-center gap-3 p-3 transition-colors hover:bg-muted/50 has-checked:bg-secondary/60">
-              <input type="checkbox" checked={chosen.has(user.email)} onChange={() => toggle(user.email)} className="size-4 shrink-0 accent-primary" />
+              <input type="checkbox" checked={chosen.has(user.email)} onChange={() => toggleTeammate(user.email)} className="size-4 shrink-0 accent-primary" />
               <Avatar name={user.name} />
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-sm font-medium">
@@ -124,41 +133,51 @@ function AssignForm({ record, onDone }) {
         ))}
       </ul>
 
-      {/* Anyone outside the team, by email address. */}
+      {/* Anyone outside the team: a name and an email address. The name is saved with the form and
+          shown wherever the assigned people are listed; the email is where the form is sent. */}
       <div className="space-y-2">
         <p className="text-sm font-medium">Someone outside the team</p>
-        <div className="flex gap-2">
+        <div className="grid grid-cols-[1fr_auto] gap-2 sm:grid-cols-[1fr_1.3fr_auto]">
+          <Input
+            value={outside.name}
+            onChange={(event) => setOutside({ ...outside, name: event.target.value })}
+            placeholder="Name"
+            aria-label="Name of someone outside the team"
+            maxLength={80}
+            className="col-span-2 sm:col-span-1"
+          />
           <Input
             type="email"
             inputMode="email"
-            value={outsideEmail}
+            value={outside.email}
             onChange={(event) => {
-              setOutsideEmail(event.target.value);
+              setOutside({ ...outside, email: event.target.value });
               setOutsideError(null);
             }}
             onKeyDown={(event) => {
               if (event.key !== "Enter") return;
               event.preventDefault();
-              addOutsideEmail();
+              addOutsider();
             }}
             placeholder="name@example.com"
             aria-label="Email address of someone outside the team"
             aria-invalid={outsideError ? true : undefined}
           />
-          <Button type="button" variant="outline" onClick={addOutsideEmail} disabled={!outsideEmail.trim()}>
+          <Button type="button" variant="outline" onClick={addOutsider} disabled={!outside.email.trim()}>
             <Plus /> Add
           </Button>
         </div>
         {outsideError && <p className="text-sm text-destructive">{outsideError}</p>}
         {outsiders.length > 0 && (
-          <ul className="flex flex-wrap gap-1.5" aria-label="Outside email addresses">
-            {outsiders.map((email) => (
-              <li key={email} className="inline-flex items-center gap-1 rounded-full border bg-secondary px-2.5 py-1 text-xs font-medium">
-                {email}
+          <ul className="flex flex-wrap gap-1.5" aria-label="People outside the team">
+            {outsiders.map(([email, name]) => (
+              <li key={email} className="inline-flex items-center gap-1.5 rounded-full border bg-secondary py-1 pr-1.5 pl-2.5 text-xs font-medium" title={email}>
+                <span className="truncate">{name || email}</span>
+                {name && <span className="truncate font-normal text-muted-foreground">{email}</span>}
                 <button
                   type="button"
-                  onClick={() => toggle(email)}
-                  aria-label={`Remove ${email}`}
+                  onClick={() => removeOutsider(email)}
+                  aria-label={`Remove ${name || email}`}
                   className="rounded-full p-0.5 text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
                 >
                   <X className="size-3" />
