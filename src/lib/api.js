@@ -79,6 +79,15 @@ export function useCalendar(from, to) {
   });
 }
 
+// How many visits each month of a year has → [{ month: "2026-01", doctors, pharmacies, total }, …] (12 entries).
+export function useMonthCounts(year) {
+  return useQuery({
+    queryKey: ["calendar", "months", year],
+    queryFn: async () => (await api(`/calendar/months?year=${year}`)).data,
+    placeholderData: keepPreviousData,
+  });
+}
+
 // After any change: refresh lists and the calendar, and keep the changed record.
 // Resolves with the API's whole answer, { data: record, meta }: `meta.email` says whether the
 // emails to the assigned people went out (see emailSummary in lib/format.js).

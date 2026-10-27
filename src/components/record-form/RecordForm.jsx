@@ -65,6 +65,7 @@ function RecordForm({ type, record, visitDay }) {
 
   const { path, formTitle, label } = TYPES[type];
   const isEditing = Boolean(record);
+  const today = dayKey(new Date()); // visits are planned for today or later
   const backHref = isEditing ? `${path}/${record.id}` : path;
   // The form is saved under this person's name and phone (from their account), so there's nothing to type.
   const signedInUser = useUser();
@@ -123,7 +124,7 @@ function RecordForm({ type, record, visitDay }) {
         <p className="mt-1 text-sm text-muted-foreground">This is what shows on the calendar.</p>
         <div className="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-2">
           <FormField id="visitDay" label={<RequiredLabel>Visit date</RequiredLabel>} error={errors.visitDay}>
-            <Input id="visitDay" type="date" {...register("visitDay", { required: "Please pick the visit date." })} />
+            <Input id="visitDay" type="date" min={today} {...register("visitDay", { required: "Please pick the visit date." })} />
           </FormField>
           <FormField id="visitTime" label={<RequiredLabel>Time</RequiredLabel>} error={errors.visitTime}>
             <Input id="visitTime" type="time" {...register("visitTime", { required: "Please pick the time." })} />
@@ -158,8 +159,9 @@ function RecordForm({ type, record, visitDay }) {
 function startingValues(type, record, visitDay) {
   const text = (key) => record?.[key] ?? "";
 
-  let visitDate = dayKey(new Date());
-  if (/^\d{4}-\d{2}-\d{2}$/.test(visitDay ?? "")) visitDate = visitDay;
+  const today = dayKey(new Date());
+  let visitDate = today;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(visitDay ?? "") && visitDay >= today) visitDate = visitDay; // a past day can't be planned
   if (record) visitDate = toDateInput(record.visitDate);
 
   const shared = {

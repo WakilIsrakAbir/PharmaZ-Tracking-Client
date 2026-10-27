@@ -3,24 +3,20 @@
 // Section 2 of a form's details, the part you can change:
 //   StatusUpdate         new status, next visit, a note, and the implementation steps
 //   ImplementationSteps  the checklist shown while the status is Implementation
-//   AssignedTo           the teammates working on this form (admins change them in AssignDialog.jsx)
 //   History              every change, newest first
-//   SubmittedBy          the marketing person who filled in the form
+// Who submitted the form and who is assigned are at the top of the details (RecordDetails.jsx).
 
 import { useState } from "react";
 import Link from "next/link";
-import { ChevronDown, ChevronUp, ListChecks, LoaderCircle, Pencil, PencilLine, Phone, Plus, UserPlus, X } from "lucide-react";
+import { ChevronDown, ChevronUp, ListChecks, LoaderCircle, Pencil, PencilLine, Plus, X } from "lucide-react";
 import { toast } from "sonner";
 
-import { useUser } from "@/components/app-shell/useUser";
-import { AssignDialog } from "@/components/record-details/AssignDialog";
-import { Avatar } from "@/components/shared/common";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useUpdateStatus } from "@/lib/api";
 import { STATUSES } from "@/lib/constants";
-import { countSteps, dhakaDateTime, formatDate, formatPhone, timeAgo, toDateInput, toTimeInput } from "@/lib/format";
+import { countSteps, dayKey, dhakaDateTime, formatDate, timeAgo, toDateInput, toTimeInput } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 // A white box with an optional title. `action` (a button) sits on the right of the title.
@@ -52,72 +48,20 @@ export function StatusCard({ record, editHref }) {
     <Card title="Status" action={editButton}>
       {/* The `key` gives a fresh form after every saved change. */}
       <StatusUpdate key={record.updatedAt} record={record} />
-      <AssignedTo record={record} />
       <CardPart title="History">
         <History history={record.history} />
       </CardPart>
-      {record.createdBy && (
-        <CardPart title="Submitted by">
-          <SubmittedBy person={record.createdBy} submittedAt={record.createdAt} />
-        </CardPart>
-      )}
     </Card>
   );
 }
 
-// A part of a card under a thin line, with a small grey title ("HISTORY", "SUBMITTED BY").
-// `action` (a small button) sits on the right of the title.
-function CardPart({ title, action, children }) {
+// A part of a card under a thin line, with a small grey title ("HISTORY").
+function CardPart({ title, children }) {
   return (
     <div className="mt-5 border-t pt-4">
-      <div className="mb-3 flex items-center justify-between gap-3">
-        <h4 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">{title}</h4>
-        {action}
-      </div>
+      <h4 className="mb-3 text-xs font-semibold tracking-wide text-muted-foreground uppercase">{title}</h4>
       {children}
     </div>
-  );
-}
-
-// The people an admin assigned to this form: teammates (who see and can update it, like the
-// submitter) or outside email addresses (who only get the emails). Admins get an "Assign" button.
-function AssignedTo({ record }) {
-  const isAdmin = useUser()?.role === "admin";
-  const [assigning, setAssigning] = useState(false);
-  const people = record.assignedTo ?? [];
-
-  const assignButton = isAdmin && (
-    <Button variant="outline" size="sm" onClick={() => setAssigning(true)}>
-      <UserPlus /> Assign
-    </Button>
-  );
-
-  return (
-    <CardPart title="Assigned to" action={assignButton}>
-      {people.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{isAdmin ? "No one yet. Assign teammates or any email address, and they'll get the form by email." : "No one yet."}</p>
-      ) : (
-        <ul className="space-y-3">
-          {people.map((person) => (
-            <li key={person.email} className="flex items-center gap-3">
-              <Avatar name={person.teammate ? person.name : "@"} className="size-9" />
-              <div className="min-w-0 flex-1 text-sm">
-                <p className="truncate font-medium">{person.name}</p>
-                {person.phone ? (
-                  <a href={`tel:${person.phone}`} className="inline-flex items-center gap-1 text-xs font-medium text-primary tabular-nums hover:underline">
-                    <Phone className="size-3" aria-hidden="true" />
-                    {formatPhone(person.phone)}
-                  </a>
-                ) : (
-                  <p className="truncate text-xs text-muted-foreground">{person.teammate ? person.email : "Outside the team · gets the emails only"}</p>
-                )}
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
-      {isAdmin && <AssignDialog open={assigning} onOpenChange={setAssigning} record={record} />}
-    </CardPart>
   );
 }
 
@@ -157,7 +101,7 @@ function StatusUpdate({ record }) {
       </p>
       <StatusPicker value={status} onChange={setStatus} />
       <div className="grid grid-cols-2 gap-2">
-        <Input type="date" aria-label="Visit date" className="bg-background" value={day} onChange={(event) => setDay(event.target.value)} />
+        <Input type="date" aria-label="Visit date" min={dayKey(new Date())} className="bg-background" value={day} onChange={(event) => setDay(event.target.value)} />
         <Input type="time" aria-label="Visit time" className="bg-background" value={time} onChange={(event) => setTime(event.target.value)} />
       </div>
       {status === "implementation" && <ImplementationSteps steps={steps} onChange={setSteps} />}
@@ -179,10 +123,10 @@ function StatusUpdate({ record }) {
 // What the API needs for each step: its id (when it is already saved), the title, and done or not.
 const stepsToSave = (steps) => steps.map(({ id, title, done }) => ({ id, title, done }));
 
-// Ongoing / Setup / Implementation / Support as four buttons in a 2 × 2 grid. The chosen one is filled in.
+// The five statuses as buttons that wrap evenly (3 + 2 in the panel). The chosen one is filled in.
 function StatusPicker({ value, onChange }) {
   return (
-    <div role="radiogroup" aria-label="Status" className="grid grid-cols-2 gap-1.5">
+    <div role="radiogroup" aria-label="Status" className="flex flex-wrap gap-1.5">
       {Object.entries(STATUSES).map(([status, { label, dot }]) => {
         const isChosen = value === status;
         return (
@@ -193,7 +137,7 @@ function StatusPicker({ value, onChange }) {
             aria-checked={isChosen}
             onClick={() => onChange(status)}
             className={cn(
-              "flex items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold whitespace-nowrap transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
+              "flex flex-auto basis-[30%] items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold whitespace-nowrap transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
               isChosen ? "border-primary bg-primary text-primary-foreground" : "border-input bg-background text-muted-foreground hover:text-foreground",
             )}
           >
@@ -362,30 +306,5 @@ function History({ history }) {
         </li>
       )}
     </ol>
-  );
-}
-
-// The marketing person who filled in the form, so the team knows whom to ask about it.
-// The name and phone number come from their account.
-function SubmittedBy({ person, submittedAt }) {
-  return (
-    <div className="flex items-center gap-3">
-      <Avatar name={person.name} className="size-9" />
-      <div className="min-w-0 flex-1 text-sm">
-        <p className="truncate font-medium">{person.name}</p>
-        {/* On a narrow screen the date moves under the phone number. */}
-        <p className="mt-0.5 flex flex-wrap items-center gap-x-3">
-          {person.phone ? (
-            <a href={`tel:${person.phone}`} className="inline-flex items-center gap-1 font-medium text-primary tabular-nums hover:underline">
-              <Phone className="size-3.5" aria-hidden="true" />
-              {formatPhone(person.phone)}
-            </a>
-          ) : (
-            <span className="text-muted-foreground">No phone number</span>
-          )}
-          <span className="text-xs text-muted-foreground">on {formatDate(submittedAt, "d MMM yyyy")}</span>
-        </p>
-      </div>
-    </div>
   );
 }

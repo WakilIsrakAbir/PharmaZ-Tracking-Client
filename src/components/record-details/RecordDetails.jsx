@@ -13,10 +13,11 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { CalendarDays, ExternalLink, LoaderCircle, Mail, MapPin, MessageCircle, Pencil, Phone, SearchX, StickyNote, Trash2 } from "lucide-react";
+import { CalendarDays, ExternalLink, LoaderCircle, Mail, MapPin, MessageCircle, Pencil, Phone, SearchX, StickyNote, Trash2, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 
 import { useUser } from "@/components/app-shell/useUser";
+import { AssignDialog } from "@/components/record-details/AssignDialog";
 import { Card, StatusCard } from "@/components/record-details/StatusCard";
 import { Avatar, ConfirmDialog, EmptyState, PageHeader, StatusBadge, TypeBadge } from "@/components/shared/common";
 import { Button } from "@/components/ui/button";
@@ -117,19 +118,51 @@ function PageActions({ record }) {
 function DetailsCard({ record }) {
   const subtitle = subtitleOf(record);
   const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(record.address)}`;
+  const isAdmin = useUser()?.role === "admin";
+  const [assigning, setAssigning] = useState(false);
 
   return (
     <section aria-label="Details" className="divide-y overflow-hidden rounded-xl border bg-card">
-      <div className="flex items-start gap-4 p-4 sm:p-5">
-        <Avatar name={record.name} photoUrl={record.photoUrl} className="size-16 rounded-xl text-lg" />
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-1.5">
-            <TypeBadge type={record.type} />
-            <StatusBadge status={record.status} steps={countSteps(record.implementationSteps)} />
+      <div className="p-4 sm:p-5">
+        <div className="flex items-start gap-4">
+          <Avatar name={record.name} photoUrl={record.photoUrl} className="size-16 rounded-xl text-lg" />
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <TypeBadge type={record.type} />
+              <StatusBadge status={record.status} steps={countSteps(record.implementationSteps)} />
+            </div>
+            <h2 className="mt-2 text-lg leading-snug font-semibold">{record.name}</h2>
+            {subtitle && <p className="text-sm text-muted-foreground">{subtitle}</p>}
           </div>
-          <h2 className="mt-2 text-lg leading-snug font-semibold">{record.name}</h2>
-          {subtitle && <p className="text-sm text-muted-foreground">{subtitle}</p>}
+          {/* Only admins decide who goes (AssignDialog.jsx). */}
+          {isAdmin && (
+            <Button variant="outline" size="sm" className="shrink-0" onClick={() => setAssigning(true)}>
+              <UserPlus /> Assign
+            </Button>
+          )}
         </div>
+
+        {/* The people on this form: who entered it, and who the admin sent. */}
+        <dl className="mt-4 space-y-2 border-t pt-4 text-sm">
+          <PeopleRow label="Submitted by">
+            {record.createdBy ? (
+              <>
+                <PersonChip person={record.createdBy} />
+                <span className="text-xs text-muted-foreground">on {formatDate(record.createdAt, "d MMM yyyy")}</span>
+              </>
+            ) : (
+              <span className="text-muted-foreground">Unknown</span>
+            )}
+          </PeopleRow>
+          <PeopleRow label="Assigned to">
+            {record.assignedTo.length === 0 ? (
+              <span className="text-muted-foreground">{isAdmin ? "No one yet. Assign teammates or any email address." : "No one yet."}</span>
+            ) : (
+              record.assignedTo.map((person) => <PersonChip key={person.email} person={person} />)
+            )}
+          </PeopleRow>
+        </dl>
+        {isAdmin && <AssignDialog open={assigning} onOpenChange={setAssigning} record={record} />}
       </div>
 
       <div className="space-y-4 p-4 sm:p-5">
@@ -184,6 +217,34 @@ function DetailsCard({ record }) {
         )}
       </div>
     </section>
+  );
+}
+
+// A label on the left, the people on the right (they wrap on narrow screens).
+function PeopleRow({ label, children }) {
+  return (
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
+      <dt className="w-24 shrink-0 text-muted-foreground">{label}</dt>
+      <dd className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1.5">{children}</dd>
+    </div>
+  );
+}
+
+// A person as a small pill: avatar + name, and the phone number when there is one (tap to call).
+// Someone outside the team (`teammate: false`) has no account, so just the address, greyed.
+function PersonChip({ person }) {
+  const outside = person.teammate === false;
+  return (
+    <span className={cn("inline-flex max-w-full items-center gap-1.5 rounded-full border bg-background py-0.5 pr-2.5 pl-0.5 text-xs font-medium", outside && "text-muted-foreground")}>
+      <Avatar name={outside ? "@" : person.name} className="size-5 text-[0.6rem]" />
+      <span className="truncate">{person.name}</span>
+      {person.phone && (
+        <a href={`tel:${person.phone}`} className="text-primary tabular-nums hover:underline" title="Call">
+          {formatPhone(person.phone)}
+        </a>
+      )}
+      {outside && <span className="sr-only">, outside the team, gets the emails only</span>}
+    </span>
   );
 }
 

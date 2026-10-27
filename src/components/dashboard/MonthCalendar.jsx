@@ -6,7 +6,7 @@
 //   VisitChip      one visit in a day
 
 import { format } from "date-fns";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 
 import { monthStart } from "@/components/dashboard/calendar";
 import { TypeIcon } from "@/components/shared/common";
@@ -24,13 +24,25 @@ const FILTERS = [
 const CHIPS_PER_DAY = 3; // more than this shows "+N more"
 const CHIPS_PER_DAY_XL = 1; // on large screens the calendar fits the screen, so the cells are short: one one-line chip per day, the rest as "+N more"
 
-export function MonthCalendar({ month, days, visitsByDay, today, pickedDay, pickedVisitId, filter, loading, onChangeMonth, onToday, onFilter, onPickDay, onPickVisit }) {
+export function MonthCalendar({ month, days, visitsByDay, today, pickedDay, pickedVisitId, filter, loading, monthTotal, onOpenOverview, onChangeMonth, onToday, onFilter, onPickDay, onPickVisit }) {
   return (
     <section aria-label="Calendar" className="flex h-full flex-col overflow-hidden rounded-xl border bg-card">
       <header className="flex flex-wrap items-center gap-x-4 gap-y-3 border-b px-4 py-3">
-        <h2 className="min-w-36 text-lg font-semibold" aria-live="polite">
-          {format(monthStart(month), "MMMM yyyy")}
-        </h2>
+        <div className="flex items-center gap-2">
+          <h2 className="text-lg font-semibold" aria-live="polite">
+            {format(monthStart(month), "MMMM yyyy")}
+          </h2>
+          {/* How many onboardings this month has. Opens the year overview (YearOverview.jsx). */}
+          <button
+            type="button"
+            onClick={onOpenOverview}
+            title="See every month of the year"
+            className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary tabular-nums outline-none hover:bg-primary/20 focus-visible:ring-2 focus-visible:ring-ring/50"
+          >
+            {monthTotal} onboarding{monthTotal === 1 ? "" : "s"}
+            <ChevronDown className="size-3.5" aria-hidden="true" />
+          </button>
+        </div>
         <div className="flex items-center gap-1">
           <Button variant="outline" size="icon-sm" aria-label="Previous month" onClick={() => onChangeMonth(-1)}>
             <ChevronLeft />
@@ -81,6 +93,7 @@ export function MonthCalendar({ month, days, visitsByDay, today, pickedDay, pick
               visits={visitsByDay[day] ?? []}
               inMonth={day.startsWith(month)}
               isToday={day === today}
+              isPast={day < today}
               isPicked={day === pickedDay}
               pickedVisitId={pickedVisitId}
               onPickDay={onPickDay}
@@ -96,7 +109,8 @@ export function MonthCalendar({ month, days, visitsByDay, today, pickedDay, pick
 // One day in the grid. Larger screens show a chip per visit (one line each, at most two, on screens
 // where the calendar fits the screen height); phones show colored dots.
 // The last column and the last row have no line of their own: the card's border is already there.
-function DayCell({ date, day, visits, inMonth, isToday, isPicked, pickedVisitId, onPickDay, onPickVisit }) {
+// A past day is greyed: its visits can still be opened and updated, but nothing new can be planned there.
+function DayCell({ date, day, visits, inMonth, isToday, isPast, isPicked, pickedVisitId, onPickDay, onPickVisit }) {
   const isFriday = date.getDay() === 5; // the weekend in Bangladesh
   const hiddenCount = visits.length - CHIPS_PER_DAY;
   const hiddenCountXl = visits.length - CHIPS_PER_DAY_XL;
@@ -109,8 +123,10 @@ function DayCell({ date, day, visits, inMonth, isToday, isPicked, pickedVisitId,
         "relative min-h-16 cursor-pointer overflow-hidden border-r border-b p-1.5 transition-colors nth-[7n]:border-r-0 nth-last-[-n+7]:border-b-0 hover:bg-muted/40 sm:min-h-28 xl:flex xl:min-h-0 xl:flex-col xl:p-1",
         !inMonth && "bg-muted/30",
         inMonth && isFriday && "bg-muted/25",
+        isPast && "bg-muted/50 hover:bg-muted/60",
         isPicked && "bg-secondary/70 hover:bg-secondary/70",
       )}
+      title={isPast ? "This day has passed: nothing new can be planned here" : undefined}
     >
       <button
         type="button"
@@ -122,7 +138,7 @@ function DayCell({ date, day, visits, inMonth, isToday, isPicked, pickedVisitId,
         aria-pressed={isPicked}
         className={cn(
           "flex size-7 items-center justify-center rounded-full text-sm tabular-nums outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
-          !inMonth && "text-muted-foreground/60",
+          (!inMonth || isPast) && "text-muted-foreground/60",
           isToday && "bg-primary font-semibold text-primary-foreground",
           isPicked && !isToday && "font-semibold ring-2 ring-primary",
         )}

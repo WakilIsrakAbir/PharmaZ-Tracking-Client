@@ -12,6 +12,13 @@ export const ROLES = {
 
 // The onboarding steps, in order. The classes use the status colors in globals.css.
 export const STATUSES = {
+  demo: {
+    label: "Demo",
+    hint: "First visit: showing PharmaZ247",
+    dot: "bg-status-demo",
+    badge: "bg-status-demo-soft text-status-demo-ink",
+    chip: "bg-status-demo-soft text-status-demo-ink border-status-demo",
+  },
   ongoing: {
     label: "Ongoing",
     hint: "Talks have started",

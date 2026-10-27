@@ -6,7 +6,7 @@
 // What is shown lives in the address bar (?month=2026-10&day=2026-10-21&type=doctor&id=…),
 // so a view can be shared and survives a refresh. The calendar grid itself is in MonthCalendar.jsx.
 
-import { use, useRef } from "react";
+import { use, useRef, useState } from "react";
 import Link from "next/link";
 import { io } from "next/cache";
 import { useSearchParams } from "next/navigation";
@@ -21,6 +21,7 @@ import {
   readView,
 } from "@/components/dashboard/calendar";
 import { MonthCalendar } from "@/components/dashboard/MonthCalendar";
+import { YearOverview } from "@/components/dashboard/YearOverview";
 import { RecordDetails } from "@/components/record-details/RecordDetails";
 import { Avatar, StatusBadge, TypeIcon } from "@/components/shared/common";
 import { Button } from "@/components/ui/button";
@@ -44,6 +45,9 @@ export function Dashboard() {
   const params = useSearchParams();
   const view = readView(params, today);
   const detailsRef = useRef(null);
+  const [overviewOpen, setOverviewOpen] = useState(false); // the year-at-a-glance dialog
+  // New onboardings go on today or a later day; a past day picked on the calendar falls back to today.
+  const newFormDay = view.day < today ? today : view.day;
 
   // Change what is shown by changing the address bar (no page reload).
   function show(changes) {
@@ -82,6 +86,17 @@ export function Dashboard() {
   const visitsToday = visits.filter(
     (visit) => dayKey(visit.visitDate) === today,
   ).length;
+  // The month's own visits (the grid also shows a few days of the months around it).
+  const visitsThisMonth = visits.filter((visit) =>
+    dayKey(visit.visitDate).startsWith(view.month),
+  ).length;
+
+  // Opens a month from the year overview, on today when it's this month, else on the 1st.
+  function showMonth(month) {
+    const day = month === today.slice(0, 7) ? today : `${month}-01`;
+    show({ month, day, type: null, id: null });
+    setOverviewOpen(false);
+  }
 
   return (
     <div className="space-y-2">
@@ -100,8 +115,17 @@ export function Dashboard() {
               : `${visitsToday} visit${visitsToday === 1 ? "" : "s"} today`}
           </p>
         </div>
-        <NewFormButtons day={view.day} inline />
+        <NewFormButtons day={newFormDay} inline />
       </div>
+
+      <YearOverview
+        open={overviewOpen}
+        onOpenChange={setOverviewOpen}
+        year={Number(view.month.slice(0, 4))}
+        currentMonth={today.slice(0, 7)}
+        pickedMonth={view.month}
+        onPickMonth={showMonth}
+      />
 
       <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(0,1fr)_400px]">
         {/* On large screens the calendar is sized to the screen (under the fixed header) and stays put,
@@ -116,6 +140,8 @@ export function Dashboard() {
             pickedVisitId={view.selected?.id}
             filter={view.filter}
             loading={isPending}
+            monthTotal={visitsThisMonth}
+            onOpenOverview={() => setOverviewOpen(true)}
             onChangeMonth={(step) => {
               const month = format(
                 addMonths(monthStart(view.month), step),
@@ -167,6 +193,7 @@ export function Dashboard() {
             <DayVisits
               day={view.day}
               now={now}
+              isPast={view.day < today}
               visits={visitsByDay[view.day] ?? []}
               showSubmitter={user?.role === "admin"}
               onPickVisit={(visit) =>
@@ -183,8 +210,10 @@ export function Dashboard() {
 // ---------------------------------------------------------------------------
 // Right, when no visit is picked: the visits on the picked day.
 // Admins see the whole team's visits, so each one also says whose it is (and who is assigned).
+// A past day only shows what happened: its visits can still be opened and updated, but nothing new
+// can be planned there, so the "New … form" buttons stay away.
 // ---------------------------------------------------------------------------
-function DayVisits({ day, now, visits, showSubmitter, onPickVisit }) {
+function DayVisits({ day, now, isPast, visits, showSubmitter, onPickVisit }) {
   const middayOfDay = dhakaDateTime(day, "12:00");
 
   return (
@@ -206,9 +235,11 @@ function DayVisits({ day, now, visits, showSubmitter, onPickVisit }) {
       {visits.length === 0 ? (
         <div className="px-5 py-8 text-center">
           <p className="text-sm text-muted-foreground">
-            Visited a doctor or pharmacy? Fill in the form and it shows up here.
+            {isPast
+              ? "This day has passed. New onboardings go on today or a later day."
+              : "Visited a doctor or pharmacy? Fill in the form and it shows up here."}
           </p>
-          <NewFormButtons day={day} className="mt-4" />
+          {!isPast && <NewFormButtons day={day} className="mt-4" />}
         </div>
       ) : (
         <ul className="divide-y">

@@ -225,11 +225,11 @@ export function StatusChoice({ register }) {
       <legend className="text-sm font-medium">
         <RequiredLabel>Status</RequiredLabel>
       </legend>
-      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="flex flex-wrap gap-2">
         {Object.entries(STATUSES).map(([value, status]) => (
           <label
             key={value}
-            className="flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors hover:bg-muted/50 has-checked:border-primary has-checked:bg-secondary has-focus-visible:ring-3 has-focus-visible:ring-ring/50"
+            className="flex flex-auto basis-[45%] cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors hover:bg-muted/50 has-checked:border-primary has-checked:bg-secondary has-focus-visible:ring-3 has-focus-visible:ring-ring/50 lg:basis-[30%] xl:basis-[18%]"
           >
             <input type="radio" value={value} className="mt-1 size-4 accent-primary" {...register("status")} />
             <span>

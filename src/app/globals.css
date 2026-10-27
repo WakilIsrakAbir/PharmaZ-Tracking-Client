@@ -47,6 +47,9 @@
   --color-sidebar-border: var(--sidebar-border);
 
   /* Onboarding status colors: bg-status-setup (dot), bg-status-setup-soft, text-status-setup-ink … */
+  --color-status-demo: var(--status-demo);
+  --color-status-demo-soft: var(--status-demo-soft);
+  --color-status-demo-ink: var(--status-demo-ink);
   --color-status-ongoing: var(--status-ongoing);
   --color-status-ongoing-soft: var(--status-ongoing-soft);
   --color-status-ongoing-ink: var(--status-ongoing-ink);
@@ -100,6 +103,9 @@
   --sidebar-border: #e2e5ee;
 
   /* Status: bright dot, soft background, dark ink (readable on the soft background) */
+  --status-demo: #0d9488;
+  --status-demo-soft: #e4f6f3;
+  --status-demo-ink: #0f6e63;
   --status-ongoing: #2f6fed;
   --status-ongoing-soft: #eaf1fe;
   --status-ongoing-ink: #1d4fc4;
