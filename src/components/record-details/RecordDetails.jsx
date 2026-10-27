@@ -100,7 +100,7 @@ function PageActions({ record }) {
             open={confirming}
             onOpenChange={setConfirming}
             title={`Delete ${record.name}?`}
-            description={`This removes the ${label.toLowerCase()} form, its photo and its history for everyone. It can't be undone.`}
+            description={`This removes the ${label.toLowerCase()} form and its history for everyone. It can't be undone.`}
             confirmLabel="Delete"
             destructive
             pending={deleteRecord.isPending}
@@ -125,7 +125,7 @@ function DetailsCard({ record }) {
     <section aria-label="Details" className="divide-y overflow-hidden rounded-xl border bg-card">
       <div className="p-4 sm:p-5">
         <div className="flex items-start gap-4">
-          <Avatar name={record.name} photoUrl={record.photoUrl} className="size-16 rounded-xl text-lg" />
+          <Avatar name={record.name} className="size-16 rounded-xl text-lg" />
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-1.5">
               <TypeBadge type={record.type} />
@@ -306,7 +306,6 @@ function doctorRows(record) {
   const f = FIELDS.doctor;
   return [
     row(f.name, record.name),
-    row(f.photo, record.photoUrl ? "Attached" : ""),
     row(f.bmdcRegNo, record.bmdcRegNo),
     row(f.phone, formatPhone(record.phone)),
     row(f.email, record.email),
@@ -327,7 +326,6 @@ function pharmacyRows(record) {
   const f = FIELDS.pharmacy;
   return [
     row(f.name, record.name),
-    row(f.photo, record.photoUrl ? "Attached" : ""),
     row(f.ownerName, record.ownerName),
     row(f.phone, formatPhone(record.phone)),
     row(f.email, record.email),

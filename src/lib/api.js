@@ -104,15 +104,9 @@ function useRecordMutation(type, request) {
   });
 }
 
-// Submit a new form ({ values, photo }) or save an edited one ({ id, values, photo }).
-export function useSaveRecord(type) {
-  return useRecordMutation(type, ({ id, values, photo }) => {
-    const body = new FormData();
-    body.append("data", JSON.stringify(values));
-    if (photo) body.append("photo", photo);
-    return api(id ? `${pathFor(type)}/${id}` : pathFor(type), { method: id ? "PUT" : "POST", body });
-  });
-}
+// Submit a new form ({ values }) or save an edited one ({ id, values }).
+export const useSaveRecord = (type) =>
+  useRecordMutation(type, ({ id, values }) => api(id ? `${pathFor(type)}/${id}` : pathFor(type), { method: id ? "PUT" : "POST", body: values }));
 
 // { id, status, visitDate, note }
 export const useUpdateStatus = (type) =>

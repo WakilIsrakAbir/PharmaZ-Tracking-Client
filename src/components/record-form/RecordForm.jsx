@@ -10,7 +10,7 @@
 // number and label to FIELDS in lib/constants.js, then add it to DoctorFields or
 // PharmacyFields in FormFields.jsx.
 
-import { use, useState } from "react";
+import { use } from "react";
 import Link from "next/link";
 import { io } from "next/cache";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -19,7 +19,7 @@ import { LoaderCircle, SearchX } from "lucide-react";
 import { toast } from "sonner";
 
 import { useUser } from "@/components/app-shell/useUser";
-import { DoctorFields, PharmacyFields, PhotoPicker, RequiredLabel, StatusChoice } from "@/components/record-form/FormFields";
+import { DoctorFields, PharmacyFields, RequiredLabel, StatusChoice } from "@/components/record-form/FormFields";
 import { EmptyState, FormField, PageHeader, PageSkeleton } from "@/components/shared/common";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -54,7 +54,6 @@ function RecordForm({ type, record, visitDay }) {
   use(io()); // the default visit date is "today", worked out on every visit
   const router = useRouter();
   const save = useSaveRecord(type);
-  const [photo, setPhoto] = useState(null); // { file, url } when a new photo was picked
   const {
     register,
     handleSubmit,
@@ -74,7 +73,7 @@ function RecordForm({ type, record, visitDay }) {
   async function onSubmit(formValues) {
     const values = toApiValues(type, formValues);
     try {
-      const { data: saved, meta } = await save.mutateAsync({ id: record?.id, values, photo: photo?.file });
+      const { data: saved, meta } = await save.mutateAsync({ id: record?.id, values });
       if (isEditing) {
         // Everyone assigned to the form gets the new version by email.
         toast.success(emailSummary("Changes saved.", meta?.email));
@@ -84,7 +83,6 @@ function RecordForm({ type, record, visitDay }) {
       toast.success(`${saved.name} is on the calendar for ${formatDate(saved.visitDate, "EEE d MMM, h:mm a")}.`);
       // This page stays alive in the background; empty it so the next new form starts blank.
       reset(startingValues(type));
-      setPhoto(null);
       router.push(dashboardLink(saved));
     } catch (error) {
       showApiErrors(error, setError);
@@ -111,7 +109,6 @@ function RecordForm({ type, record, visitDay }) {
           )}
         </div>
         <div className="space-y-7 p-5 sm:p-6">
-          <PhotoPicker field={FIELDS[type].photo} current={record?.photoUrl} photo={photo} onChange={setPhoto} error={errors.photo} />
           <div className="grid grid-cols-1 gap-x-8 gap-y-5 md:grid-cols-2">
             {type === "doctor" ? <DoctorFields register={register} errors={errors} /> : <PharmacyFields register={register} errors={errors} />}
           </div>

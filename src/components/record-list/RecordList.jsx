@@ -150,7 +150,7 @@ function RecordRow({ record, path, showSubmitter }) {
         className={cn("grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1 px-4 py-3 transition-colors outline-none hover:bg-muted/40 focus-visible:bg-muted/40", COLUMNS)}
       >
         <div className="flex min-w-0 items-center gap-3">
-          <Avatar name={record.name} photoUrl={record.photoUrl} className="size-10" />
+          <Avatar name={record.name} className="size-10" />
           <div className="min-w-0">
             <p className="truncate font-semibold">{record.name}</p>
             <p className="truncate text-sm text-muted-foreground tabular-nums">{formatPhone(record.phone)}</p>

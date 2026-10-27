@@ -252,7 +252,6 @@ function DayVisits({ day, now, isPast, visits, showSubmitter, onPickVisit }) {
               >
                 <Avatar
                   name={visit.name}
-                  photoUrl={visit.photoUrl}
                   className="size-10"
                 />
                 <div className="min-w-0 flex-1">

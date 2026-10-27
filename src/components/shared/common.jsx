@@ -180,14 +180,8 @@ function avatarColor(name = "") {
   return AVATAR_COLORS[hash % AVATAR_COLORS.length];
 }
 
-// The photo when there is one, otherwise the person's initials in a colored circle.
-// A photo that can't be loaded (for example, one that no longer exists) also shows the initials.
-export function Avatar({ name, photoUrl, className }) {
-  const [failedUrl, setFailedUrl] = useState(null);
-  if (photoUrl && photoUrl !== failedUrl) {
-    // eslint-disable-next-line @next/next/no-img-element -- small private photos served by our own API
-    return <img src={photoUrl} alt="" onError={() => setFailedUrl(photoUrl)} className={cn("size-9 shrink-0 rounded-full object-cover", className)} />;
-  }
+// The person's initials in a colored circle.
+export function Avatar({ name, className }) {
   return (
     <span
       aria-hidden="true"

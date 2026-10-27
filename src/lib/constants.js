@@ -83,7 +83,6 @@ export const PAYMENT_METHODS = [
 export const FIELDS = {
   doctor: {
     name: [1, "Full Name"],
-    photo: [2, "Doctor Picture"],
     bmdcRegNo: [3, "BMDC Reg. No."],
     phone: [4, "Phone No"],
     email: [5, "Email"],
@@ -100,7 +99,6 @@ export const FIELDS = {
   },
   pharmacy: {
     name: [1, "Pharmacy Name"],
-    photo: [2, "Shop Photo"],
     ownerName: [3, "Owner Name"],
     phone: [4, "Phone No"],
     email: [5, "Email"],
