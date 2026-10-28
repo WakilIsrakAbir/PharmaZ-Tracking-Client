@@ -134,19 +134,19 @@ function AssignForm({ record, onDone }) {
         ))}
       </ul>
 
-      {/* Anyone outside the team: a name and an email address. The name is saved with the form and
-          shown wherever the assigned people are listed; the email is where the form is sent. */}
+      {/* Anyone outside the team: a name on one row, the email address and "Add" on the next. The name
+          is saved with the form and shown wherever the assigned people are listed; the email is where
+          the form is sent. */}
       <div className="space-y-2">
         <p className="text-sm font-medium">Someone outside the team</p>
-        <div className="grid grid-cols-[1fr_auto] gap-2 sm:grid-cols-[1fr_1.3fr_auto]">
-          <Input
-            value={outside.name}
-            onChange={(event) => setOutside({ ...outside, name: event.target.value })}
-            placeholder="Name"
-            aria-label="Name of someone outside the team"
-            maxLength={80}
-            className="col-span-2 sm:col-span-1"
-          />
+        <Input
+          value={outside.name}
+          onChange={(event) => setOutside({ ...outside, name: event.target.value })}
+          placeholder="Name"
+          aria-label="Name of someone outside the team"
+          maxLength={80}
+        />
+        <div className="flex gap-2">
           <Input
             type="email"
             inputMode="email"
@@ -163,6 +163,7 @@ function AssignForm({ record, onDone }) {
             placeholder="name@example.com"
             aria-label="Email address of someone outside the team"
             aria-invalid={outsideError ? true : undefined}
+            className="min-w-0 flex-1"
           />
           <Button type="button" variant="outline" onClick={addOutsider} disabled={!outside.email.trim()}>
             <Plus /> Add
