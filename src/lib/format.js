@@ -122,15 +122,17 @@ export function initials(name = "") {
 
 export const firstName = (name = "") => name.trim().split(/\s+/)[0] ?? "";
 
-// What to tell someone after saving, from the API's meta.email: who got the email, who didn't,
-// or that email isn't set up on the server. `saved` is the first sentence, e.g. "Changes saved."
+// What to tell someone after saving, from the API's meta.email ({ configured, sent: [names],
+// failed: [{ name, reason }] }). `saved` is the first sentence, e.g. "Changes saved."
+//   → { text, problem }   `problem` is true when someone who should have been emailed wasn't
+//                         (the email failed, or email isn't set up), so the toast can be red.
 export function emailSummary(saved, { configured, sent = [], failed = [] } = {}) {
+  if (sent.length === 0 && failed.length === 0) return { text: saved, problem: false };
+  if (!configured) return { text: `${saved} But email isn't set up on the server, so no one was emailed.`, problem: true };
   const parts = [saved];
-  if (sent.length === 0 && failed.length === 0) return saved;
-  if (!configured) return `${saved} Email isn't set up on the server, so no one was emailed.`;
   if (sent.length) parts.push(`Emailed ${sent.join(", ")}.`);
-  if (failed.length) parts.push(`The email to ${failed.join(", ")} couldn't be sent.`);
-  return parts.join(" ");
+  for (const person of failed) parts.push(`The email to ${person.name} couldn't be sent: ${person.reason}.`);
+  return { text: parts.join(" "), problem: failed.length > 0 };
 }
 
 // Who is on a form, in one line: "by Wakil · with Rafi, Sumi". `showSubmitter` is false for a

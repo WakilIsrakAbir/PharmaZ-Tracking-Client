@@ -75,8 +75,10 @@ function RecordForm({ type, record, visitDay }) {
     try {
       const { data: saved, meta } = await save.mutateAsync({ id: record?.id, values });
       if (isEditing) {
-        // Everyone assigned to the form gets the new version by email.
-        toast.success(emailSummary("Changes saved.", meta?.email));
+        // Everyone assigned to the form gets the new version by email; in red, with the reason, if someone didn't.
+        const email = emailSummary("Changes saved.", meta?.email);
+        if (email.problem) toast.error(email.text, { duration: 10_000 });
+        else toast.success(email.text);
         router.push(`${path}/${saved.id}`);
         return;
       }

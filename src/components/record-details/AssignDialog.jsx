@@ -57,30 +57,59 @@ function AssignForm({ record, onDone }) {
     setChosen(next);
   }
 
-  function addOutsider() {
+  // What is typed in the outside boxes: { email, name } when it can be added, else { error } saying why not.
+  function readOutsider() {
     const email = outside.email.trim().toLowerCase();
     const name = outside.name.trim();
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      setOutsideError("Please enter a valid email address.");
-      return;
+    if (!email) return { error: `Enter ${name ? `${name}'s` : "the"} email address too.` };
+    if (!EMAIL_SHAPE.test(email)) return { error: "That doesn't look like an email address. It should be like name@example.com." };
+    if (teamEmails.has(email)) return { error: "That's a teammate: tick them in the list above." };
+    return { email, name };
+  }
+
+  // "Add": puts the outside person among the chosen. Returns the new choices, or null when the boxes are wrong.
+  function addOutsider() {
+    const person = readOutsider();
+    if (person.error) {
+      setOutsideError(person.error);
+      return null;
     }
-    if (teamEmails.has(email)) {
-      setOutsideError("That's a teammate: tick them in the list above.");
-      return;
-    }
-    setChosen(new Map(chosen).set(email, name));
+    const next = new Map(chosen).set(person.email, person.name);
+    setChosen(next);
     setOutside({ email: "", name: "" });
     setOutsideError(null);
+    return next;
   }
 
   async function save() {
-    const assignees = [...chosen].map(([email, name]) => (name ? { email, name } : { email }));
+    let choices = chosen;
+    // Typed an outside person but didn't press Add? Add them now, so the save doesn't quietly leave them out.
+    if (outside.email.trim() || outside.name.trim()) {
+      choices = addOutsider();
+      if (!choices) {
+        toast.error(`Nothing was saved. ${readOutsider().error}`);
+        return;
+      }
+    }
+    if (signature(choices) === signature(record.assignedTo.map((person) => [person.email, person.teammate ? "" : person.name]))) {
+      toast.message("Nothing changed: the same people are assigned.");
+      onDone();
+      return;
+    }
+
+    const assignees = [...choices].map(([email, name]) => (name ? { email, name } : { email }));
     try {
-      const { meta } = await assign.mutateAsync({ id: record.id, assignees });
-      toast.success(emailSummary("Assignments saved.", meta?.email));
+      const { data: saved, meta } = await assign.mutateAsync({ id: record.id, assignees });
+      const first = saved.assignedTo.length === 0 ? `No one is assigned to ${record.name} now.` : `Assigned: ${saved.assignedTo.map((person) => person.name).join(", ")}.`;
+      // In red, with the reason, when someone who should have been emailed wasn't.
+      const email = emailSummary(first, meta?.email);
+      if (email.problem) toast.error(email.text, { duration: 10_000 });
+      else toast.success(email.text);
       onDone();
     } catch (error) {
-      toast.error(error.message);
+      // The API's own words, with the field it complained about when there is one.
+      const detail = Object.values(error.fields ?? {})[0] ?? error.message;
+      toast.error(`Couldn't save the assignments: ${detail}`, { duration: 10_000 });
     }
   }
 
@@ -207,3 +236,12 @@ function matchesSearch(user, search) {
   const text = search.trim().toLowerCase();
   return !text || user.name.toLowerCase().includes(text) || user.email.includes(text);
 }
+
+const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// The chosen people as one comparable string ("a@x.com:|b@y.com:Rafi"), to tell whether anything changed.
+const signature = (entries) =>
+  [...entries]
+    .map(([email, name]) => `${email}:${name}`)
+    .sort()
+    .join("|");
