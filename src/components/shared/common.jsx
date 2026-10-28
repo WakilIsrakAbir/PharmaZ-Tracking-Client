@@ -221,10 +221,10 @@ export function Select({ className, active = false, compact = false, children, .
 export const PAGE_SIZES = [10, 20, 50];
 
 // The bar under a list: which rows are on screen, how many a page has, and the page numbers.
-// `meta` is what the API says about the pages: { page, limit, total, pages }. Nothing shows while
-// everything fits on the smallest page.
+// `meta` is what the API says about the pages: { page, limit, total, pages }. It is always there,
+// even for a list that fits on one page, so the list looks the same whatever its size.
 export function Pagination({ meta, onPage, onLimit }) {
-  if (!meta || meta.total <= PAGE_SIZES[0]) return null;
+  if (!meta || meta.total === 0) return null;
   const { page, limit, total, pages } = meta;
   const first = (page - 1) * limit + 1;
   const last = Math.min(page * limit, total);
@@ -249,35 +249,33 @@ export function Pagination({ meta, onPage, onLimit }) {
             ))}
           </Select>
         </label>
-        {pages > 1 && (
-          <div className="flex items-center gap-1">
-            <Button variant="outline" size="icon-sm" aria-label="Previous page" disabled={page <= 1} onClick={() => onPage(page - 1)}>
-              <ChevronLeft />
-            </Button>
-            {pageNumbers(page, pages).map((item, index) =>
-              item === "…" ? (
-                <span key={`gap-${index}`} className="w-6 text-center text-muted-foreground" aria-hidden="true">
-                  …
-                </span>
-              ) : (
-                <Button
-                  key={item}
-                  variant={item === page ? "default" : "ghost"}
-                  size="icon-sm"
-                  aria-label={`Page ${item}`}
-                  aria-current={item === page ? "page" : undefined}
-                  className="tabular-nums"
-                  onClick={() => onPage(item)}
-                >
-                  {item}
-                </Button>
-              ),
-            )}
-            <Button variant="outline" size="icon-sm" aria-label="Next page" disabled={page >= pages} onClick={() => onPage(page + 1)}>
-              <ChevronRight />
-            </Button>
-          </div>
-        )}
+        <div className="flex items-center gap-1">
+          <Button variant="outline" size="icon-sm" aria-label="Previous page" disabled={page <= 1} onClick={() => onPage(page - 1)}>
+            <ChevronLeft />
+          </Button>
+          {pageNumbers(page, pages).map((item, index) =>
+            item === "…" ? (
+              <span key={`gap-${index}`} className="w-6 text-center text-muted-foreground" aria-hidden="true">
+                …
+              </span>
+            ) : (
+              <Button
+                key={item}
+                variant={item === page ? "default" : "ghost"}
+                size="icon-sm"
+                aria-label={`Page ${item}`}
+                aria-current={item === page ? "page" : undefined}
+                className="tabular-nums"
+                onClick={() => onPage(item)}
+              >
+                {item}
+              </Button>
+            ),
+          )}
+          <Button variant="outline" size="icon-sm" aria-label="Next page" disabled={page >= pages} onClick={() => onPage(page + 1)}>
+            <ChevronRight />
+          </Button>
+        </div>
       </div>
     </nav>
   );

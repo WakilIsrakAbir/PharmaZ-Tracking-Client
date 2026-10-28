@@ -35,8 +35,6 @@ const SORTS = [
 const WHEN = [
   { value: "", label: "Any time" },
   { value: "today", label: "Today" },
-  { value: "week", label: "This week" },
-  { value: "month", label: "This month" },
   { value: "upcoming", label: "Upcoming" },
   { value: "past", label: "Past" },
 ];
@@ -347,31 +345,14 @@ function Teammates({ people }) {
 
 // The from/to Dhaka days of a "Visit date" choice, worked out when the list is asked for.
 function visitRange(when) {
-  if (!when) return {};
-  const now = new Date();
-  const today = dayKey(now);
-  const noon = new Date(dhakaDateTime(today, "12:00")); // a moment inside today, safe to add days to
-  switch (when) {
-    case "today":
-      return { from: today, to: today };
-    case "week": {
-      // Saturday to Friday, like the calendar. "i" is the ISO weekday: Monday 1 … Saturday 6, Sunday 7.
-      const sinceSaturday = (Number(formatDate(now, "i")) + 1) % 7;
-      const saturday = addDays(noon, -sinceSaturday);
-      return { from: dayKey(saturday), to: dayKey(addDays(saturday, 6)) };
-    }
-    case "month": {
-      const [year, month] = today.split("-").map(Number);
-      const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate(); // day 0 of the next month
-      return { from: `${today.slice(0, 7)}-01`, to: `${today.slice(0, 7)}-${String(lastDay).padStart(2, "0")}` };
-    }
-    case "upcoming":
-      return { from: today };
-    case "past":
-      return { to: dayKey(addDays(noon, -1)) };
-    default:
-      return {};
+  const today = dayKey(new Date());
+  if (when === "today") return { from: today, to: today };
+  if (when === "upcoming") return { from: today }; // today and later
+  if (when === "past") {
+    const noon = new Date(dhakaDateTime(today, "12:00")); // a moment inside today, safe to take a day from
+    return { to: dayKey(addDays(noon, -1)) }; // up to yesterday
   }
+  return {};
 }
 
 function RowsSkeleton() {
