@@ -2,6 +2,8 @@ import "server-only";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
+import { homePage } from "@/lib/constants";
+
 // Who is signed in, checked on the server. The API stays the real lock;
 // this only decides which pages to show.
 
@@ -62,9 +64,13 @@ export async function requireUser() {
   return user;
 }
 
-// For admin-only pages: everyone else goes back to the dashboard.
-export async function requireAdmin() {
+// For the pages of one part of the app: people with another role go to their own home page
+// (the dashboard, or the call log for the support team).
+export async function requireRole(roles) {
   const user = await requireUser();
-  if (user.role !== "admin") redirect("/");
+  if (!roles.includes(user.role)) redirect(homePage(user.role));
   return user;
 }
+
+// For admin-only pages.
+export const requireAdmin = () => requireRole(["admin"]);

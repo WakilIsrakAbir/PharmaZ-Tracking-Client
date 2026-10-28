@@ -16,7 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useUsers } from "@/lib/api";
-import { ROLES } from "@/lib/constants";
+import { ROLES, ROLE_BADGE } from "@/lib/constants";
 import { formatPhone, timeAgo } from "@/lib/format";
 import { useUrlParams } from "@/lib/useUrlParams";
 import { cn } from "@/lib/utils";
@@ -235,7 +235,7 @@ function UserRow({ user, isMe }) {
 
 function RoleBadge({ role }) {
   return (
-    <Badge variant={role === "admin" ? "default" : "secondary"} className="w-fit">
+    <Badge variant={ROLE_BADGE[role]} className="w-fit">
       {role === "admin" && <ShieldCheck aria-hidden="true" />}
       {ROLES[role].label}
     </Badge>

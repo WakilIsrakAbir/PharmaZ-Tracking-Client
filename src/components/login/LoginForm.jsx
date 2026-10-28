@@ -13,14 +13,15 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { api } from "@/lib/api";
+import { homePage } from "@/lib/constants";
 import { firstName } from "@/lib/format";
 
-// Where to go after signing in: the page that sent you here (?next=…), or the dashboard.
-// Only pages of this app are allowed, never another website.
-function pageAfterSignIn() {
+// Where to go after signing in: the page that sent you here (?next=…), or this person's home page
+// (the dashboard, or the call log for the support team). Only pages of this app are allowed, never another website.
+function pageAfterSignIn(user) {
   const next = new URLSearchParams(window.location.search).get("next");
   const isPageOfThisApp = next?.startsWith("/") && !next.startsWith("//");
-  return isPageOfThisApp ? next : "/";
+  return isPageOfThisApp ? next : homePage(user.role);
 }
 
 export function LoginForm() {
@@ -42,7 +43,7 @@ export function LoginForm() {
         setFirstSignIn({ name: user.name, temporaryPassword: values.password });
         return;
       }
-      window.location.assign(pageAfterSignIn()); // a full page load starts the app fresh for this user
+      window.location.assign(pageAfterSignIn(user)); // a full page load starts the app fresh for this user
     } catch (error) {
       if (!showServerErrors(error, setError)) setProblem(error.message);
     }
@@ -105,8 +106,8 @@ export function ChoosePasswordForm({ name, temporaryPassword }) {
   async function onSubmit({ currentPassword, newPassword }) {
     setProblem(null);
     try {
-      await api("/auth/password", { method: "PATCH", body: { currentPassword, newPassword } });
-      window.location.assign(pageAfterSignIn());
+      const { data: user } = await api("/auth/password", { method: "PATCH", body: { currentPassword, newPassword } });
+      window.location.assign(pageAfterSignIn(user));
     } catch (error) {
       // When the temporary password box is hidden, show its message at the top instead.
       const hiddenFieldMessage = temporaryPassword && error.fields?.currentPassword;

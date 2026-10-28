@@ -4,7 +4,7 @@ import { ChangePasswordForm } from "@/components/account/ChangePasswordForm";
 import { Protected } from "@/components/layout/Protected";
 import { Avatar, PageHeader } from "@/components/shared/common";
 import { Badge } from "@/components/ui/badge";
-import { ROLES } from "@/lib/constants";
+import { ROLES, ROLE_BADGE } from "@/lib/constants";
 import { formatDate, formatPhone } from "@/lib/format";
 import { requireUser } from "@/lib/session";
 
@@ -31,7 +31,7 @@ async function Account() {
             <Avatar name={user.name} className="size-14 text-lg" />
             <div className="min-w-0">
               <h2 className="truncate text-lg font-semibold">{user.name}</h2>
-              <Badge variant={user.role === "admin" ? "default" : "secondary"} className="mt-1">
+              <Badge variant={ROLE_BADGE[user.role]} className="mt-1">
                 {ROLES[user.role].label}
               </Badge>
             </div>

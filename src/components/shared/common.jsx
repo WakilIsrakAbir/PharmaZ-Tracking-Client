@@ -25,7 +25,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { STATUSES, TYPES } from "@/lib/constants";
+import { CALL_STATUSES, STATUSES, TYPES } from "@/lib/constants";
 import { initials } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -146,6 +146,17 @@ export function StatusBadge({ status, steps, className }) {
           </span>
         </>
       )}
+    </span>
+  );
+}
+
+// "● Open" / "● Resolved" for a support call.
+export function CallStatusBadge({ status, className }) {
+  const { label, badge, dot } = CALL_STATUSES[status] ?? CALL_STATUSES.open;
+  return (
+    <span className={cn("inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold whitespace-nowrap", badge, className)}>
+      <span className={cn("size-1.5 rounded-full", dot)} aria-hidden="true" />
+      {label}
     </span>
   );
 }

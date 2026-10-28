@@ -19,6 +19,9 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
@@ -124,8 +127,8 @@ function TeammateForm({ user, onDone }) {
       {!isEditing && (
         <fieldset className="space-y-2">
           <legend className="text-sm font-medium">Role</legend>
-          <div className="grid gap-2 sm:grid-cols-2">
-            {["marketing", "admin"].map((role) => (
+          <div className="grid gap-2">
+            {["marketing", "support", "admin"].map((role) => (
               <label
                 key={role}
                 className="flex cursor-pointer gap-3 rounded-lg border p-3 transition-colors hover:bg-muted/50 has-checked:border-primary has-checked:bg-secondary has-focus-visible:ring-3 has-focus-visible:ring-ring/50"
@@ -164,17 +167,22 @@ export function UserActions({ user, isMe }) {
   const [openDialog, setOpenDialog] = useState(null); // "edit" | "confirm" | "credentials"
   const [action, setAction] = useState(null); // what "confirm" asks about: "role" | "reset" | "deactivate"
   const [credentials, setCredentials] = useState(null); // the new temporary password after a reset
-  // `action` and `credentials` are kept after their dialog closes, so its text stays while it fades out.
+  const [newRole, setNewRole] = useState(null); // the role chosen under "Change role"
+  // `action`, `newRole` and `credentials` are kept after their dialog closes, so its text stays while it fades out.
 
   const name = firstName(user.name);
-  const makeAdmin = user.role !== "admin";
   const closeOnDismiss = (open) => !open && setOpenDialog(null); // Escape, ✕, Cancel or a click outside
+
+  // What each role means for the person, in the question asked before changing it.
+  const roleChange = {
+    admin: { title: `Make ${user.name} an admin?`, description: `${name} will be able to add teammates, change their access, delete forms and see every support call.`, confirmLabel: "Make admin" },
+    marketing: { title: `Move ${user.name} to marketing?`, description: `${name} will fill in onboarding forms and see the calendar, but won't manage the team or see support calls.`, confirmLabel: "Move to marketing" },
+    support: { title: `Move ${user.name} to support?`, description: `${name} will log support calls and see only the call log, with their own calls.`, confirmLabel: "Move to support" },
+  };
 
   // The question asked before each action.
   const questions = {
-    role: makeAdmin
-      ? { title: `Make ${user.name} an admin?`, description: `${name} will be able to add teammates, change their access and delete forms.`, confirmLabel: "Make admin" }
-      : { title: `Move ${user.name} to marketing?`, description: `${name} keeps their work but won't be able to manage the team any more.`, confirmLabel: "Move to marketing" },
+    role: roleChange[newRole] ?? roleChange.marketing,
     reset: {
       title: `Reset ${name}'s password?`,
       description: `${name} will be signed out everywhere and get a new temporary password to sign in with.`,
@@ -188,16 +196,17 @@ export function UserActions({ user, isMe }) {
     },
   };
 
-  function ask(nextAction) {
+  function ask(nextAction, role = null) {
     setAction(nextAction);
+    setNewRole(role);
     setOpenDialog("confirm");
   }
 
   async function run(chosenAction) {
     try {
       if (chosenAction === "role") {
-        await updateUser.mutateAsync({ id: user.id, role: makeAdmin ? "admin" : "marketing" });
-        toast.success(makeAdmin ? `${user.name} is now an admin.` : `${user.name} is now on the marketing team.`);
+        await updateUser.mutateAsync({ id: user.id, role: newRole });
+        toast.success(newRole === "admin" ? `${user.name} is now an admin.` : `${user.name} is now on the ${ROLES[newRole].label.toLowerCase()} team.`);
         setOpenDialog(null);
       } else if (chosenAction === "reset") {
         setCredentials(await resetPassword.mutateAsync(user.id));
@@ -236,9 +245,22 @@ export function UserActions({ user, isMe }) {
           )}
           {!isMe && user.isActive && (
             <>
-              <DropdownMenuItem onSelect={() => ask("role")}>
-                <ShieldCheck /> {makeAdmin ? "Make admin" : "Move to marketing"}
-              </DropdownMenuItem>
+              {/* The other two roles, under "Change role". */}
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger>
+                  <ShieldCheck /> Change role
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent>
+                  {Object.entries(ROLES)
+                    .filter(([role]) => role !== user.role)
+                    .map(([role, { label, description }]) => (
+                      <DropdownMenuItem key={role} onSelect={() => ask("role", role)} className="flex-col items-start gap-0">
+                        <span>{label}</span>
+                        <span className="text-xs text-muted-foreground">{description}</span>
+                      </DropdownMenuItem>
+                    ))}
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
               <DropdownMenuItem onSelect={() => ask("reset")}>
                 <KeyRound /> Reset password
               </DropdownMenuItem>

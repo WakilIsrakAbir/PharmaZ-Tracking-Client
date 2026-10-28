@@ -8,6 +8,23 @@ export const SIDEBAR_STORAGE_KEY = "pz-sidebar";
 export const ROLES = {
   admin: { label: "Admin", description: "Manages the team and sees everything" },
   marketing: { label: "Marketing", description: "Fills in forms and updates their status" },
+  support: { label: "Support", description: "Logs support calls from doctors and pharmacies" },
+};
+
+// How each role's badge looks (components/ui/badge.jsx variants).
+export const ROLE_BADGE = { admin: "default", marketing: "secondary", support: "outline" };
+
+// Where each role lands after signing in: the support team has its own part of the app.
+export const homePage = (role) => (role === "support" ? "/support-calls" : "/");
+
+// The two sides of the app, as the roles that may open their pages (see components/layout/Protected.jsx).
+export const ONBOARDING_ROLES = ["admin", "marketing"];
+export const SUPPORT_ROLES = ["admin", "support"];
+
+// A support call is open until the problem is solved. The colors are the status colors in globals.css.
+export const CALL_STATUSES = {
+  open: { label: "Open", dot: "bg-status-setup", badge: "bg-status-setup-soft text-status-setup-ink" },
+  resolved: { label: "Resolved", dot: "bg-status-implementation", badge: "bg-status-implementation-soft text-status-implementation-ink" },
 };
 
 // The onboarding steps, in order. The classes use the status colors in globals.css.

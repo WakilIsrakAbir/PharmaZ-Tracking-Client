@@ -132,6 +132,49 @@ export const useAssign = (type) =>
   useRecordMutation(type, ({ id, assignees }) => api(`${pathFor(type)}/${id}/assignees`, { method: "PUT", body: { assignees } }));
 
 // ---------------------------------------------------------------------------
+// Support calls (the support team and admins)
+// ---------------------------------------------------------------------------
+
+// One page of the call log → { data: calls, meta: { counts: { all, open, resolved }, page, limit, total, pages } }.
+// `params`: search, status, type, createdBy, from, to, sort, page, limit.
+export function useSupportCalls(params = {}) {
+  return useQuery({
+    queryKey: ["support-calls", params],
+    queryFn: () => api(`/support-calls?${queryString(params)}`),
+    placeholderData: keepPreviousData,
+  });
+}
+
+export function useSupportCall(id) {
+  return useQuery({
+    queryKey: ["support-call", id],
+    queryFn: async () => (await api(`/support-calls/${id}`)).data,
+    enabled: Boolean(id),
+  });
+}
+
+// After any change: refresh the log, and keep the changed call. Resolves with the saved call.
+function useSupportCallMutation(request) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input) => (await request(input))?.data ?? null,
+    onSuccess: (call) => {
+      if (call) queryClient.setQueryData(["support-call", call.id], call);
+      queryClient.invalidateQueries({ queryKey: ["support-calls"] });
+    },
+  });
+}
+
+// Log a new call ({ values }) or save an edited one ({ id, values }).
+export const useSaveSupportCall = () =>
+  useSupportCallMutation(({ id, values }) => api(id ? `/support-calls/${id}` : "/support-calls", { method: id ? "PUT" : "POST", body: values }));
+
+// { id, status: "open" | "resolved" }
+export const useChangeCallStatus = () => useSupportCallMutation(({ id, status }) => api(`/support-calls/${id}/status`, { method: "PATCH", body: { status } }));
+
+export const useDeleteSupportCall = () => useSupportCallMutation((id) => api(`/support-calls/${id}`, { method: "DELETE" }));
+
+// ---------------------------------------------------------------------------
 // Team accounts (admin)
 // ---------------------------------------------------------------------------
 

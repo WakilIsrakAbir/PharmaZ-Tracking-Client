@@ -9,7 +9,7 @@
 import { Suspense, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ChevronsUpDown, LayoutDashboard, LogOut, Menu as MenuIcon, Pill, Stethoscope, UserRound, Users } from "lucide-react";
+import { ChevronsUpDown, Headset, LayoutDashboard, LogOut, Menu as MenuIcon, PhoneIncoming, Pill, Stethoscope, UserRound, Users } from "lucide-react";
 
 import { toggleSidebar, useSidebarCollapsed } from "@/components/app-shell/useSidebar";
 import { UserContext, useUser } from "@/components/app-shell/useUser";
@@ -27,14 +27,18 @@ import {
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { api } from "@/lib/api";
-import { ROLES } from "@/lib/constants";
+import { ONBOARDING_ROLES, ROLES, SUPPORT_ROLES } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
+// The menu, and which roles see each item: the onboarding side for admins and the marketing team,
+// the call log for admins and the support team, and the Team page for admins.
 const MENU = [
-  { href: "/", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/doctors", label: "Doctors", icon: Stethoscope },
-  { href: "/pharmacies", label: "Pharmacies", icon: Pill },
-  { href: "/team", label: "Team", icon: Users, adminOnly: true },
+  { href: "/", label: "Dashboard", icon: LayoutDashboard, roles: ONBOARDING_ROLES },
+  { href: "/doctors", label: "Doctors", icon: Stethoscope, roles: ONBOARDING_ROLES },
+  { href: "/pharmacies", label: "Pharmacies", icon: Pill, roles: ONBOARDING_ROLES },
+  { href: "/support-calls/new", label: "Log a call", icon: PhoneIncoming, roles: SUPPORT_ROLES },
+  { href: "/support-calls", label: "Call log", icon: Headset, roles: SUPPORT_ROLES },
+  { href: "/team", label: "Team", icon: Users, roles: ["admin"] },
 ];
 
 // ---------------------------------------------------------------------------
@@ -119,14 +123,20 @@ function TopBar() {
 }
 
 // ---------------------------------------------------------------------------
-// The menu (Dashboard, Doctors, Pharmacies, and Team for admins)
+// The menu: the items for this person's role, with the current page highlighted
 // ---------------------------------------------------------------------------
 
-// Until the current page and the user are known, show the items everyone has, none highlighted.
+// Until the user is known, the menu's place is kept with grey lines, so nothing jumps.
 function MainMenu({ onNavigate }) {
-  const everyoneItems = MENU.filter((item) => !item.adminOnly);
+  const placeholder = (
+    <div className="space-y-1" aria-hidden="true">
+      {[0, 1, 2].map((row) => (
+        <Skeleton key={row} className="h-10 w-full rounded-lg sidebar-collapsed:mx-auto sidebar-collapsed:size-10" />
+      ))}
+    </div>
+  );
   return (
-    <Suspense fallback={<MenuList items={everyoneItems} onNavigate={onNavigate} />}>
+    <Suspense fallback={placeholder}>
       <CurrentMenu onNavigate={onNavigate} />
     </Suspense>
   );
@@ -135,8 +145,9 @@ function MainMenu({ onNavigate }) {
 function CurrentMenu({ onNavigate }) {
   const pathname = usePathname();
   const user = useUser();
-  const items = MENU.filter((item) => !item.adminOnly || user?.role === "admin");
-  const active = items.find((item) => isCurrentPage(item.href, pathname));
+  const items = MENU.filter((item) => item.roles.includes(user?.role));
+  // The item whose address fits best: on /support-calls/new that is "Log a call", not "Call log".
+  const active = items.filter((item) => isCurrentPage(item.href, pathname)).sort((a, b) => b.href.length - a.href.length)[0];
   return <MenuList items={items} activeHref={active?.href} onNavigate={onNavigate} />;
 }
 
