@@ -91,17 +91,17 @@ function CallForm({ call }) {
         </div>
 
         <div className="grid grid-cols-1 gap-x-8 gap-y-5 p-5 sm:grid-cols-2 sm:p-6">
-          {/* Who called: a doctor or a pharmacy, as two tiles. */}
+          {/* Who called: two tiles, the pharmacy first because it is the usual (and default) caller. */}
           <fieldset className="space-y-2 sm:col-span-2">
             <legend className="text-sm font-medium">
               Who called <span className="text-destructive">*</span>
             </legend>
             <div className="grid grid-cols-2 gap-2">
-              {Object.entries(TYPES).map(([type, { label }]) => (
+              {["pharmacy", "doctor"].map((type) => (
                 <label key={type} className={tileClass}>
                   <input type="radio" value={type} className="size-4 accent-primary" {...register("callerType")} />
                   <TypeIcon type={type} className="size-4 text-muted-foreground" />
-                  <span className="text-sm font-medium">{label}</span>
+                  <span className="text-sm font-medium">{TYPES[type].label}</span>
                 </label>
               ))}
             </div>
