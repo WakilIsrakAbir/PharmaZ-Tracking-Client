@@ -173,7 +173,7 @@ function startingValues(type, record, visitDay) {
     availableTo: text("availableTo"),
     visitDay: visitDate,
     visitTime: record ? toTimeInput(record.visitDate) : "10:00",
-    status: record?.status ?? "ongoing",
+    status: record?.status ?? "demo", // a new onboarding starts with the demo visit
     notes: text("notes"),
   };
 
