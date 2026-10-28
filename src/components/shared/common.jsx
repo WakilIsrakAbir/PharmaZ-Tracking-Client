@@ -3,13 +3,14 @@
 // Small pieces used on many pages:
 //   Page layout   PageHeader, EmptyState, PageSkeleton, ServerUnreachable
 //   Labels        StatusBadge, TypeIcon, TypeBadge, Avatar
+//   Lists         Select, Pagination, PAGE_SIZES
 //   Forms         FormField, fieldProps, showServerErrors, PasswordInput, passwordRules
 //   Dialogs       ConfirmDialog
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Eye, EyeOff, LoaderCircle, Pill, Stethoscope, WifiOff } from "lucide-react";
+import { ArrowLeft, ChevronDown, ChevronLeft, ChevronRight, Eye, EyeOff, LoaderCircle, Pill, Stethoscope, WifiOff } from "lucide-react";
 
 import {
   AlertDialog,
@@ -190,6 +191,104 @@ export function Avatar({ name, className }) {
       {initials(name)}
     </span>
   );
+}
+
+// ---------------------------------------------------------------------------
+// Lists
+// ---------------------------------------------------------------------------
+
+// A drop-down list styled like Input. It's the browser's own <select>, so it works the same on phones.
+// `active` tints it, to show that it is narrowing the list; `compact` is the short one for toolbars.
+export function Select({ className, active = false, compact = false, children, ...props }) {
+  return (
+    <span className={cn("relative block", className)}>
+      <select
+        className={cn(
+          "h-10 w-full min-w-0 appearance-none rounded-lg border border-input bg-background pr-8 pl-3 text-base transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm",
+          compact && "h-8 text-sm",
+          active && "border-primary/40 bg-primary/5 font-medium text-primary",
+        )}
+        {...props}
+      >
+        {children}
+      </select>
+      <ChevronDown className={cn("pointer-events-none absolute top-1/2 right-2.5 size-4 -translate-y-1/2", active ? "text-primary" : "text-muted-foreground")} aria-hidden="true" />
+    </span>
+  );
+}
+
+// How many rows a page of a list can have. The first one is the smallest.
+export const PAGE_SIZES = [10, 20, 50];
+
+// The bar under a list: which rows are on screen, how many a page has, and the page numbers.
+// `meta` is what the API says about the pages: { page, limit, total, pages }. Nothing shows while
+// everything fits on the smallest page.
+export function Pagination({ meta, onPage, onLimit }) {
+  if (!meta || meta.total <= PAGE_SIZES[0]) return null;
+  const { page, limit, total, pages } = meta;
+  const first = (page - 1) * limit + 1;
+  const last = Math.min(page * limit, total);
+
+  return (
+    <nav aria-label="Pages" className="flex flex-col gap-3 border-t px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between">
+      <p className="text-muted-foreground tabular-nums">
+        Showing{" "}
+        <span className="font-medium text-foreground">
+          {first}–{last}
+        </span>{" "}
+        of <span className="font-medium text-foreground">{total}</span>
+      </p>
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+        <label className="flex items-center gap-2 text-muted-foreground">
+          Per page
+          <Select compact value={limit} onChange={(event) => onLimit(Number(event.target.value))} aria-label="Rows per page" className="w-18">
+            {PAGE_SIZES.map((size) => (
+              <option key={size} value={size}>
+                {size}
+              </option>
+            ))}
+          </Select>
+        </label>
+        {pages > 1 && (
+          <div className="flex items-center gap-1">
+            <Button variant="outline" size="icon-sm" aria-label="Previous page" disabled={page <= 1} onClick={() => onPage(page - 1)}>
+              <ChevronLeft />
+            </Button>
+            {pageNumbers(page, pages).map((item, index) =>
+              item === "…" ? (
+                <span key={`gap-${index}`} className="w-6 text-center text-muted-foreground" aria-hidden="true">
+                  …
+                </span>
+              ) : (
+                <Button
+                  key={item}
+                  variant={item === page ? "default" : "ghost"}
+                  size="icon-sm"
+                  aria-label={`Page ${item}`}
+                  aria-current={item === page ? "page" : undefined}
+                  className="tabular-nums"
+                  onClick={() => onPage(item)}
+                >
+                  {item}
+                </Button>
+              ),
+            )}
+            <Button variant="outline" size="icon-sm" aria-label="Next page" disabled={page >= pages} onClick={() => onPage(page + 1)}>
+              <ChevronRight />
+            </Button>
+          </div>
+        )}
+      </div>
+    </nav>
+  );
+}
+
+// The page numbers to show, at most seven: 1 … 8 9 10 … 20. All of them when there are seven or fewer.
+function pageNumbers(page, pages) {
+  if (pages <= 7) return Array.from({ length: pages }, (_, index) => index + 1);
+  if (page <= 4) return [1, 2, 3, 4, 5, "…", pages];
+  if (page >= pages - 3) return [1, "…", pages - 4, pages - 3, pages - 2, pages - 1, pages];
+  return [1, "…", page - 1, page, page + 1, "…", pages];
 }
 
 // ---------------------------------------------------------------------------

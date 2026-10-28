@@ -49,15 +49,26 @@ export async function api(path, { method = "GET", body, signal } = {}) {
 
 const pathFor = (type) => (type === "doctor" ? "/doctors" : "/pharmacies");
 
+// "?status=setup&page=2" from { status: "setup", page: 2, search: "" }: empty values are left out.
+function queryString(params) {
+  const query = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== "" && value !== null && value !== undefined) query.set(key, value);
+  }
+  return query.toString();
+}
+
 // ---------------------------------------------------------------------------
 // Doctors and pharmacies (the onboarding forms)
 // ---------------------------------------------------------------------------
 
-// → { data: records, meta: { counts } }
-export function useRecords(type, { search = "", status = "" } = {}) {
+// One page of the list → { data: records, meta: { counts, page, limit, total, pages } }.
+// `params` are the API's filters: search, status, assignee, createdBy, from, to, sort, page, limit.
+// While a new page or filter loads, the previous answer stays on screen (no flash of empty list).
+export function useRecords(type, params = {}) {
   return useQuery({
-    queryKey: ["records", type, search, status],
-    queryFn: () => api(`${pathFor(type)}?${new URLSearchParams({ ...(search && { search }), ...(status && { status }) })}`),
+    queryKey: ["records", type, params],
+    queryFn: () => api(`${pathFor(type)}?${queryString(params)}`),
     placeholderData: keepPreviousData,
   });
 }
@@ -121,10 +132,19 @@ export const useAssign = (type) =>
   useRecordMutation(type, ({ id, assignees }) => api(`${pathFor(type)}/${id}/assignees`, { method: "PUT", body: { assignees } }));
 
 // ---------------------------------------------------------------------------
-// Team accounts (admin). The team is small, so the whole list is loaded once.
+// Team accounts (admin)
 // ---------------------------------------------------------------------------
-export function useUsers() {
-  return useQuery({ queryKey: ["users"], queryFn: async () => (await api("/users")).data });
+
+// One page of the team → { data: users, meta: { counts: { active, deactivated }, page, limit, total, pages } }.
+// `params`: search, role, active ("true" / "false"), sort, page, limit. Pass { limit: 100 } for the
+// whole team at once (the people pickers). Only admins may ask; `enabled: false` skips the call.
+export function useUsers(params = {}, { enabled = true } = {}) {
+  return useQuery({
+    queryKey: ["users", params],
+    queryFn: () => api(`/users?${queryString(params)}`),
+    placeholderData: keepPreviousData,
+    enabled,
+  });
 }
 
 function useUserMutation(request) {

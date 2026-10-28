@@ -9,7 +9,6 @@
 import { use, useRef, useState } from "react";
 import Link from "next/link";
 import { io } from "next/cache";
-import { useSearchParams } from "next/navigation";
 import { addDays, addMonths, format } from "date-fns";
 import { ArrowLeft, CalendarCheck, Plus, UserRound } from "lucide-react";
 
@@ -35,6 +34,7 @@ import {
   peopleLine,
   relativeDay,
 } from "@/lib/format";
+import { useUrlParams } from "@/lib/useUrlParams";
 import { cn } from "@/lib/utils";
 
 export function Dashboard() {
@@ -42,22 +42,12 @@ export function Dashboard() {
   const now = new Date();
   const today = dayKey(now);
   const user = useUser();
-  const params = useSearchParams();
+  const [params, show] = useUrlParams(); // show({ day, type, id }) changes what is shown, no page load
   const view = readView(params, today);
   const detailsRef = useRef(null);
   const [overviewOpen, setOverviewOpen] = useState(false); // the year-at-a-glance dialog
   // New onboardings go on today or a later day; a past day picked on the calendar falls back to today.
   const newFormDay = view.day < today ? today : view.day;
-
-  // Change what is shown by changing the address bar (no page reload).
-  function show(changes) {
-    const next = new URLSearchParams(params);
-    for (const [key, value] of Object.entries(changes)) {
-      if (value) next.set(key, value);
-      else next.delete(key);
-    }
-    window.history.replaceState(null, "", `?${next}`);
-  }
 
   // On phones the details are under the calendar, so scroll down to them.
   function showDetails(changes) {

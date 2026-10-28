@@ -29,7 +29,8 @@ export function AssignDialog({ open, onOpenChange, record }) {
 }
 
 function AssignForm({ record, onDone }) {
-  const { data: users = [], isPending } = useUsers();
+  const { data, isPending } = useUsers({ limit: 100 }); // the whole team, A to Z
+  const users = data?.data ?? [];
   const assign = useAssign(record.type);
   // The chosen people, by email address: teammates ticked in the list (their name comes from their
   // account), and outside addresses typed in with a name.

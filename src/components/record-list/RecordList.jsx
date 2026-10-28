@@ -1,30 +1,104 @@
 "use client";
 
-import { useDeferredValue, useState } from "react";
+// /doctors and /pharmacies: the forms, one page at a time, with status tabs, a search box and filters.
+// Admins see every form, with who submitted it; marketing people see the forms they submitted or
+// were assigned to. The tabs, filters and page live in the address (?status=setup&page=2), so a
+// refresh or the back button returns to the same view, and it can be shared.
+
+import { useDeferredValue, useEffect, useState } from "react";
 import Link from "next/link";
-import { ChevronRight, Pill, Plus, Search, Stethoscope, TriangleAlert } from "lucide-react";
+import { addDays } from "date-fns";
+import { ChevronRight, FilterX, Pill, Plus, Search, Stethoscope, TriangleAlert } from "lucide-react";
 
 import { useUser } from "@/components/app-shell/useUser";
-import { Avatar, EmptyState, PageHeader, StatusBadge, TypeIcon } from "@/components/shared/common";
+import { Avatar, EmptyState, PAGE_SIZES, PageHeader, Pagination, Select, StatusBadge, TypeIcon } from "@/components/shared/common";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useRecords } from "@/lib/api";
+import { useRecords, useUsers } from "@/lib/api";
 import { STATUSES, TYPES } from "@/lib/constants";
-import { countSteps, formatDate, formatPhone, peopleLine, relativeDay } from "@/lib/format";
+import { countSteps, dayKey, dhakaDateTime, formatDate, formatPhone, peopleLine, relativeDay } from "@/lib/format";
+import { useUrlParams } from "@/lib/useUrlParams";
 import { cn } from "@/lib/utils";
 
-// /doctors and /pharmacies, newest visit first. Admins see every form, with who submitted it;
-// marketing people see the forms they submitted or were assigned to.
+const DEFAULT_LIMIT = 20;
+
+// The order of the list. The empty value is the API's own default.
+const SORTS = [
+  { value: "", label: "Newest visit first" },
+  { value: "visit_asc", label: "Oldest visit first" },
+  { value: "name", label: "Name, A to Z" },
+  { value: "updated", label: "Last updated first" },
+];
+
+// The "Visit date" choices; visitRange() turns each one into days.
+const WHEN = [
+  { value: "", label: "Any time" },
+  { value: "today", label: "Today" },
+  { value: "week", label: "This week" },
+  { value: "month", label: "This month" },
+  { value: "upcoming", label: "Upcoming" },
+  { value: "past", label: "Past" },
+];
+
 export function RecordList({ type }) {
-  const isAdmin = useUser()?.role === "admin";
+  const user = useUser();
+  const isAdmin = user?.role === "admin";
   const { label, plural, path } = TYPES[type];
-  const [status, setStatus] = useState("");
-  const [search, setSearch] = useState("");
+  const [params, setParams] = useUrlParams();
+
+  // The view, read from the address.
+  const status = params.get("status") ?? "";
+  const assignee = params.get("assigned") ?? "";
+  const createdBy = params.get("by") ?? "";
+  const when = params.get("when") ?? "";
+  const sort = params.get("sort") ?? "";
+  const page = Math.max(1, Number(params.get("page")) || 1);
+  const limit = PAGE_SIZES.includes(Number(params.get("limit"))) ? Number(params.get("limit")) : DEFAULT_LIMIT;
+
+  // Typing shows at once; the list follows a moment later, so not every keystroke asks the API.
+  const [search, setSearch] = useState(params.get("q") ?? "");
   const query = useDeferredValue(search.trim());
-  const { data, isPending, isError, refetch } = useRecords(type, { search: query, status });
+  const filtering = Boolean(query || assignee || createdBy || when); // something besides the tabs narrows the list
+
+  // Changing a filter goes back to the first page.
+  function change(changes) {
+    setParams({ ...changes, page: null });
+  }
+
+  function clearFilters() {
+    setSearch("");
+    change({ q: null, status: null, assigned: null, by: null, when: null });
+  }
+
+  function goToPage(next) {
+    setParams({ page: next > 1 ? next : null });
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  const { data, isPending, isError, isFetching, refetch } = useRecords(type, {
+    search: query,
+    status,
+    assignee: assignee === "me" ? user?.id : assignee, // "me" is this person's own id
+    createdBy: createdBy === "me" ? user?.id : createdBy,
+    ...visitRange(when),
+    sort,
+    page,
+    limit,
+  });
   const records = data?.data ?? [];
-  const counts = data?.meta?.counts;
+  const meta = data?.meta;
+  const counts = meta?.counts;
+
+  // The people in "Assigned to" and "Submitted by". Only admins may load the team, so marketing
+  // people get "Me" and "No one yet" to choose from.
+  const { data: team } = useUsers({ limit: 100 }, { enabled: isAdmin });
+  const teammates = (team?.data ?? []).filter((person) => person.id !== user?.id);
+
+  // A page that no longer exists (after a delete, or an old link): go to the last page there is.
+  useEffect(() => {
+    if (meta && meta.pages > 0 && page > meta.pages) setParams({ page: meta.pages > 1 ? meta.pages : null });
+  }, [meta, page, setParams]);
 
   const tabs = [{ value: "", label: "All", count: counts?.all }].concat(
     Object.entries(STATUSES).map(([value, { label: statusLabel }]) => ({ value, label: statusLabel, count: counts?.[value] })),
@@ -49,6 +123,7 @@ export function RecordList({ type }) {
       />
 
       <section className="overflow-hidden rounded-xl border bg-card">
+        {/* The status tabs and the search box */}
         <div className="flex flex-col gap-3 border-b p-3 lg:flex-row lg:items-center lg:justify-between">
           <div role="tablist" aria-label="Status" className="flex flex-wrap gap-1">
             {tabs.map((tab) => (
@@ -57,7 +132,7 @@ export function RecordList({ type }) {
                 type="button"
                 role="tab"
                 aria-selected={status === tab.value}
-                onClick={() => setStatus(tab.value)}
+                onClick={() => change({ status: tab.value })}
                 className={cn(
                   "inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
                   status === tab.value ? "bg-secondary text-secondary-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground",
@@ -74,12 +149,51 @@ export function RecordList({ type }) {
             <Input
               type="search"
               value={search}
-              onChange={(event) => setSearch(event.target.value)}
+              onChange={(event) => {
+                setSearch(event.target.value);
+                change({ q: event.target.value.trim() });
+              }}
               placeholder={type === "doctor" ? "Search name, phone, BMDC, chamber" : "Search name, phone, owner, area"}
               aria-label={`Search ${plural.toLowerCase()}`}
               className="pl-9"
             />
           </div>
+        </div>
+
+        {/* The filters: who, when, and the order */}
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b bg-muted/30 px-3 py-2">
+          <FilterSelect label="Assigned to" value={assignee} onChange={(value) => change({ assigned: value })}>
+            <option value="">Anyone</option>
+            <option value="none">No one yet</option>
+            <option value="me">Me</option>
+            <Teammates people={teammates} />
+          </FilterSelect>
+          {isAdmin && (
+            <FilterSelect label="Submitted by" value={createdBy} onChange={(value) => change({ by: value })}>
+              <option value="">Anyone</option>
+              <option value="me">Me</option>
+              <Teammates people={teammates} />
+            </FilterSelect>
+          )}
+          <FilterSelect label="Visit date" value={when} onChange={(value) => change({ when: value })}>
+            {WHEN.map((choice) => (
+              <option key={choice.value} value={choice.value}>
+                {choice.label}
+              </option>
+            ))}
+          </FilterSelect>
+          <FilterSelect label="Sort" value={sort} onChange={(value) => change({ sort: value })} neutral className="sm:ml-auto">
+            {SORTS.map((choice) => (
+              <option key={choice.value} value={choice.value}>
+                {choice.label}
+              </option>
+            ))}
+          </FilterSelect>
+          {(filtering || status) && (
+            <Button variant="ghost" size="sm" onClick={clearFilters}>
+              <FilterX /> Clear
+            </Button>
+          )}
         </div>
 
         {isPending ? (
@@ -99,16 +213,19 @@ export function RecordList({ type }) {
         ) : records.length === 0 ? (
           <EmptyState
             className="m-3 border-none"
-            icon={query || status ? Search : type === "doctor" ? Stethoscope : Pill}
-            title={query || status ? "Nothing matches" : `No ${label.toLowerCase()} forms yet`}
+            icon={filtering || status ? Search : type === "doctor" ? Stethoscope : Pill}
+            title={filtering || status ? "Nothing matches" : `No ${label.toLowerCase()} forms yet`}
             description={
-              query || status
-                ? "Try a different search or status."
+              filtering || status
+                ? "Try a different search, status or filters."
                 : `When ${isAdmin ? "someone submits" : "you submit"} a ${label.toLowerCase()} form, it shows up here and on the calendar.`
             }
             action={
-              !query &&
-              !status && (
+              filtering || status ? (
+                <Button variant="outline" onClick={clearFilters}>
+                  <FilterX /> Clear filters
+                </Button>
+              ) : (
                 <Button asChild>
                   <Link href={`${path}/new`}>
                     <Plus /> Fill in the first {label.toLowerCase()} form
@@ -118,19 +235,23 @@ export function RecordList({ type }) {
             }
           />
         ) : (
-          <ul className="divide-y">
-            <li className={cn("hidden gap-4 px-4 py-2 text-xs font-semibold text-muted-foreground md:grid", COLUMNS)}>
-              <span>{label}</span>
-              <span>Location</span>
-              <span>Assigned to</span>
-              <span>Date and time</span>
-              <span>Status</span>
-              <span />
-            </li>
-            {records.map((record) => (
-              <RecordRow key={record.id} record={record} path={path} showSubmitter={isAdmin} />
-            ))}
-          </ul>
+          <>
+            {/* While another page or filter loads, the rows on screen fade a little instead of vanishing. */}
+            <ul className={cn("divide-y transition-opacity", isFetching && "opacity-60")} aria-busy={isFetching}>
+              <li className={cn("hidden gap-4 px-4 py-2 text-xs font-semibold text-muted-foreground md:grid", COLUMNS)}>
+                <span>{label}</span>
+                <span>Location</span>
+                <span>Assigned to</span>
+                <span>Date and time</span>
+                <span>Status</span>
+                <span />
+              </li>
+              {records.map((record) => (
+                <RecordRow key={record.id} record={record} path={path} showSubmitter={isAdmin} />
+              ))}
+            </ul>
+            <Pagination meta={meta} onPage={goToPage} onLimit={(next) => change({ limit: next === DEFAULT_LIMIT ? null : next })} />
+          </>
         )}
       </section>
     </div>
@@ -194,6 +315,63 @@ function AssignedCell({ people }) {
       <span className="truncate">{people.map((person) => person.name).join(", ")}</span>
     </div>
   );
+}
+
+// A labelled drop-down in the filter row. It's tinted while it narrows the list; `neutral` is for
+// the sort order, which never narrows anything.
+function FilterSelect({ label, value, onChange, neutral = false, className, children }) {
+  return (
+    <label className={cn("flex items-center gap-1.5 text-sm text-muted-foreground", className)}>
+      {label}
+      <Select compact active={!neutral && Boolean(value)} value={value} onChange={(event) => onChange(event.target.value)} aria-label={label}>
+        {children}
+      </Select>
+    </label>
+  );
+}
+
+// The team as <option>s, under a "Teammates" heading. Deactivated people are listed too: their forms are still here.
+function Teammates({ people }) {
+  if (people.length === 0) return null;
+  return (
+    <optgroup label="Teammates">
+      {people.map((person) => (
+        <option key={person.id} value={person.id}>
+          {person.name}
+          {!person.isActive && " (deactivated)"}
+        </option>
+      ))}
+    </optgroup>
+  );
+}
+
+// The from/to Dhaka days of a "Visit date" choice, worked out when the list is asked for.
+function visitRange(when) {
+  if (!when) return {};
+  const now = new Date();
+  const today = dayKey(now);
+  const noon = new Date(dhakaDateTime(today, "12:00")); // a moment inside today, safe to add days to
+  switch (when) {
+    case "today":
+      return { from: today, to: today };
+    case "week": {
+      // Saturday to Friday, like the calendar. "i" is the ISO weekday: Monday 1 … Saturday 6, Sunday 7.
+      const sinceSaturday = (Number(formatDate(now, "i")) + 1) % 7;
+      const saturday = addDays(noon, -sinceSaturday);
+      return { from: dayKey(saturday), to: dayKey(addDays(saturday, 6)) };
+    }
+    case "month": {
+      const [year, month] = today.split("-").map(Number);
+      const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate(); // day 0 of the next month
+      return { from: `${today.slice(0, 7)}-01`, to: `${today.slice(0, 7)}-${String(lastDay).padStart(2, "0")}` };
+    }
+    case "upcoming":
+      return { from: today };
+    case "past":
+      return { to: dayKey(addDays(noon, -1)) };
+    default:
+      return {};
+  }
 }
 
 function RowsSkeleton() {
