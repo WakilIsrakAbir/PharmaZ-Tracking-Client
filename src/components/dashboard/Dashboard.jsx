@@ -46,8 +46,10 @@ export function Dashboard() {
   const view = readView(params, today);
   const detailsRef = useRef(null);
   const [overviewOpen, setOverviewOpen] = useState(false); // the year-at-a-glance dialog
-  // New onboardings go on today or a later day; a past day picked on the calendar falls back to today.
-  const newFormDay = view.day < today ? today : view.day;
+  // Marketing people plan visits for today or later: a past day picked on the calendar falls back to
+  // today. Admins may also enter an onboarding that already happened, on the day it did.
+  const isAdmin = user?.role === "admin";
+  const newFormDay = view.day < today && !isAdmin ? today : view.day;
 
   // On phones the details are under the calendar, so scroll down to them.
   function showDetails(changes) {
@@ -137,6 +139,7 @@ export function Dashboard() {
             filter={view.filter}
             loading={isPending}
             monthTotal={visitsThisMonth}
+            canPlanPast={isAdmin}
             onOpenOverview={() => setOverviewOpen(true)}
             onChangeMonth={(step) => {
               const month = format(
@@ -189,9 +192,9 @@ export function Dashboard() {
             <DayVisits
               day={view.day}
               now={now}
-              isPast={view.day < today}
+              canPlan={isAdmin || view.day >= today}
               visits={visitsByDay[view.day] ?? []}
-              showSubmitter={user?.role === "admin"}
+              showSubmitter={isAdmin}
               onPickVisit={(visit) =>
                 showDetails({ type: visit.type, id: visit.id })
               }
@@ -206,10 +209,10 @@ export function Dashboard() {
 // ---------------------------------------------------------------------------
 // Right, when no visit is picked: the visits on the picked day.
 // Admins see the whole team's visits, so each one also says whose it is (and who is assigned).
-// A past day only shows what happened: its visits can still be opened and updated, but nothing new
-// can be planned there, so the "New … form" buttons stay away.
+// `canPlan` is false on a past day for marketing people: it only shows what happened (its visits can
+// still be opened and updated), so the "New … form" buttons stay away. Admins can plan on any day.
 // ---------------------------------------------------------------------------
-function DayVisits({ day, now, isPast, visits, showSubmitter, onPickVisit }) {
+function DayVisits({ day, now, canPlan, visits, showSubmitter, onPickVisit }) {
   const middayOfDay = dhakaDateTime(day, "12:00");
 
   return (
@@ -231,11 +234,11 @@ function DayVisits({ day, now, isPast, visits, showSubmitter, onPickVisit }) {
       {visits.length === 0 ? (
         <div className="px-5 py-8 text-center">
           <p className="text-sm text-muted-foreground">
-            {isPast
-              ? "This day has passed. New onboardings go on today or a later day."
-              : "Visited a doctor or pharmacy? Fill in the form and it shows up here."}
+            {canPlan
+              ? "Visited a doctor or pharmacy? Fill in the form and it shows up here."
+              : "This day has passed. New onboardings go on today or a later day."}
           </p>
-          {!isPast && <NewFormButtons day={day} className="mt-4" />}
+          {canPlan && <NewFormButtons day={day} className="mt-4" />}
         </div>
       ) : (
         <ul className="divide-y">

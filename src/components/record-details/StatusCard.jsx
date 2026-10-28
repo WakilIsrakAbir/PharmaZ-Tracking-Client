@@ -11,6 +11,7 @@ import Link from "next/link";
 import { ChevronDown, ChevronUp, ListChecks, LoaderCircle, Pencil, PencilLine, Plus, X } from "lucide-react";
 import { toast } from "sonner";
 
+import { useUser } from "@/components/app-shell/useUser";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -70,6 +71,8 @@ function CardPart({ title, children }) {
 function StatusUpdate({ record }) {
   const savedSteps = record.implementationSteps ?? [];
   const updateStatus = useUpdateStatus(record.type);
+  // Marketing people move visits to today or later; an admin may also put one on a day that has passed.
+  const earliestDay = useUser()?.role === "admin" ? undefined : dayKey(new Date());
   const [status, setStatus] = useState(record.status);
   const [day, setDay] = useState(toDateInput(record.visitDate));
   const [time, setTime] = useState(toTimeInput(record.visitDate));
@@ -101,7 +104,7 @@ function StatusUpdate({ record }) {
       </p>
       <StatusPicker value={status} onChange={setStatus} />
       <div className="grid grid-cols-2 gap-2">
-        <Input type="date" aria-label="Visit date" min={dayKey(new Date())} className="bg-background" value={day} onChange={(event) => setDay(event.target.value)} />
+        <Input type="date" aria-label="Visit date" min={earliestDay} className="bg-background" value={day} onChange={(event) => setDay(event.target.value)} />
         <Input type="time" aria-label="Visit time" className="bg-background" value={time} onChange={(event) => setTime(event.target.value)} />
       </div>
       {status === "implementation" && <ImplementationSteps steps={steps} onChange={setSteps} />}

@@ -54,20 +54,22 @@ function RecordForm({ type, record, visitDay }) {
   use(io()); // the default visit date is "today", worked out on every visit
   const router = useRouter();
   const save = useSaveRecord(type);
+  // The form is saved under this person's name and phone (from their account), so there's nothing to type.
+  const signedInUser = useUser();
+  // Marketing people plan visits for today or later; an admin may also enter a visit that already happened.
+  const isAdmin = signedInUser?.role === "admin";
   const {
     register,
     handleSubmit,
     reset,
     setError,
     formState: { errors, isSubmitting },
-  } = useForm({ defaultValues: startingValues(type, record, visitDay) });
+  } = useForm({ defaultValues: startingValues(type, record, visitDay, isAdmin) });
 
   const { path, formTitle, label } = TYPES[type];
   const isEditing = Boolean(record);
-  const today = dayKey(new Date()); // visits are planned for today or later
+  const earliestDay = isAdmin ? undefined : dayKey(new Date()); // the date picker starts at today for marketing people
   const backHref = isEditing ? `${path}/${record.id}` : path;
-  // The form is saved under this person's name and phone (from their account), so there's nothing to type.
-  const signedInUser = useUser();
   const marketingPerson = isEditing ? record.createdBy : signedInUser;
 
   async function onSubmit(formValues) {
@@ -123,7 +125,7 @@ function RecordForm({ type, record, visitDay }) {
         <p className="mt-1 text-sm text-muted-foreground">This is what shows on the calendar.</p>
         <div className="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-2">
           <FormField id="visitDay" label={<RequiredLabel>Visit date</RequiredLabel>} error={errors.visitDay}>
-            <Input id="visitDay" type="date" min={today} {...register("visitDay", { required: "Please pick the visit date." })} />
+            <Input id="visitDay" type="date" min={earliestDay} {...register("visitDay", { required: "Please pick the visit date." })} />
           </FormField>
           <FormField id="visitTime" label={<RequiredLabel>Time</RequiredLabel>} error={errors.visitTime}>
             <Input id="visitTime" type="time" {...register("visitTime", { required: "Please pick the time." })} />
@@ -154,13 +156,14 @@ function RecordForm({ type, record, visitDay }) {
 // ---------------------------------------------------------------------------
 
 // What the form starts with: the saved record when editing, otherwise empty boxes,
-// with the visit on `visitDay` (from ?date=) or today, at 10:00.
-function startingValues(type, record, visitDay) {
+// with the visit on `visitDay` (from ?date=) or today, at 10:00. A past `visitDay` only counts
+// when the person may plan in the past (`canPlanPast`: admins).
+function startingValues(type, record, visitDay, canPlanPast = false) {
   const text = (key) => record?.[key] ?? "";
 
   const today = dayKey(new Date());
   let visitDate = today;
-  if (/^\d{4}-\d{2}-\d{2}$/.test(visitDay ?? "") && visitDay >= today) visitDate = visitDay; // a past day can't be planned
+  if (/^\d{4}-\d{2}-\d{2}$/.test(visitDay ?? "") && (visitDay >= today || canPlanPast)) visitDate = visitDay;
   if (record) visitDate = toDateInput(record.visitDate);
 
   const shared = {

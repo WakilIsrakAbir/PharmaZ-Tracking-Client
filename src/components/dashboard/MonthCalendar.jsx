@@ -24,7 +24,7 @@ const FILTERS = [
 const CHIPS_PER_DAY = 3; // more than this shows "+N more"
 const CHIPS_PER_DAY_XL = 1; // on large screens the calendar fits the screen, so the cells are short: one one-line chip per day, the rest as "+N more"
 
-export function MonthCalendar({ month, days, visitsByDay, today, pickedDay, pickedVisitId, filter, loading, monthTotal, onOpenOverview, onChangeMonth, onToday, onFilter, onPickDay, onPickVisit }) {
+export function MonthCalendar({ month, days, visitsByDay, today, pickedDay, pickedVisitId, filter, loading, monthTotal, canPlanPast, onOpenOverview, onChangeMonth, onToday, onFilter, onPickDay, onPickVisit }) {
   return (
     <section aria-label="Calendar" className="flex h-full flex-col overflow-hidden rounded-xl border bg-card">
       <header className="flex flex-wrap items-center gap-x-4 gap-y-3 border-b px-4 py-3">
@@ -94,6 +94,7 @@ export function MonthCalendar({ month, days, visitsByDay, today, pickedDay, pick
               inMonth={day.startsWith(month)}
               isToday={day === today}
               isPast={day < today}
+              canPlanPast={canPlanPast}
               isPicked={day === pickedDay}
               pickedVisitId={pickedVisitId}
               onPickDay={onPickDay}
@@ -109,8 +110,9 @@ export function MonthCalendar({ month, days, visitsByDay, today, pickedDay, pick
 // One day in the grid. Larger screens show a chip per visit (one line each, at most two, on screens
 // where the calendar fits the screen height); phones show colored dots.
 // The last column and the last row have no line of their own: the card's border is already there.
-// A past day is greyed: its visits can still be opened and updated, but nothing new can be planned there.
-function DayCell({ date, day, visits, inMonth, isToday, isPast, isPicked, pickedVisitId, onPickDay, onPickVisit }) {
+// A past day is greyed: its visits can still be opened and updated, but marketing people can't plan
+// anything new there (`canPlanPast` is true for admins, who may enter a visit that already happened).
+function DayCell({ date, day, visits, inMonth, isToday, isPast, canPlanPast, isPicked, pickedVisitId, onPickDay, onPickVisit }) {
   const isFriday = date.getDay() === 5; // the weekend in Bangladesh
   const hiddenCount = visits.length - CHIPS_PER_DAY;
   const hiddenCountXl = visits.length - CHIPS_PER_DAY_XL;
@@ -127,7 +129,7 @@ function DayCell({ date, day, visits, inMonth, isToday, isPast, isPicked, picked
         isPicked && "bg-secondary/70 hover:bg-secondary/70",
         isToday && "bg-status-implementation-soft/70 hover:bg-status-implementation-soft", // today is green, never greyed like the past
       )}
-      title={isPast ? "This day has passed: nothing new can be planned here" : undefined}
+      title={isPast && !canPlanPast ? "This day has passed: nothing new can be planned here" : undefined}
     >
       <button
         type="button"
