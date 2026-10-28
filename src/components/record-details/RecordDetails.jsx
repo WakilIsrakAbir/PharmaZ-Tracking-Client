@@ -134,9 +134,10 @@ function DetailsCard({ record }) {
                 <TypeBadge type={record.type} />
                 <StatusBadge status={record.status} steps={countSteps(record.implementationSteps)} />
               </div>
-              {/* Only admins decide who goes (AssignDialog.jsx). */}
+              {/* Only admins decide who goes (AssignDialog.jsx). Filled in the brand color, so it reads as the
+                  one action on this card and not as another badge. */}
               {isAdmin && (
-                <Button variant="outline" size="sm" className="shrink-0" onClick={() => setAssigning(true)}>
+                <Button size="sm" className="shrink-0" onClick={() => setAssigning(true)}>
                   <UserPlus /> Assign
                 </Button>
               )}
