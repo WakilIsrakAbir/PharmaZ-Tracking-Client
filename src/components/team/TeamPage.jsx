@@ -83,7 +83,9 @@ export function TeamPage() {
   }, [meta, page, setParams]);
 
   return (
-    <div className="space-y-6">
+    // The page is at least as tall as the screen (under the top bar on phones), and the list's card
+    // fills it, so the page bar sits at the bottom of the screen even when the team is small.
+    <div className="flex min-h-[calc(100dvh-6.5rem)] flex-col gap-6 lg:min-h-[calc(100dvh-4rem)]">
       <PageHeader
         title="Team"
         description="Everyone who can sign in to the tracker. Only admins can add people or change their access."
@@ -94,7 +96,7 @@ export function TeamPage() {
         }
       />
 
-      <section className="overflow-hidden rounded-xl border bg-card">
+      <section className="flex flex-1 flex-col overflow-clip rounded-xl border bg-card">
         {/* The Active / Deactivated tabs and the search box */}
         <div className="flex flex-col gap-3 border-b p-3 sm:flex-row sm:items-center sm:justify-between">
           <Tabs value={tab} onValueChange={(value) => change({ status: value === "active" ? null : value })}>
@@ -153,27 +155,28 @@ export function TeamPage() {
           )}
         </div>
 
-        {isPending && <RowsSkeleton />}
+        {/* The rows take the room that is left, so the page bar under them stays at the bottom. */}
+        <div className="flex-1">
+          {isPending && <RowsSkeleton />}
 
-        {isError && (
-          <EmptyState
-            className="m-3 border-none"
-            icon={TriangleAlert}
-            title="We couldn't load the team"
-            description="Check your connection and try again."
-            action={
-              <Button variant="outline" onClick={() => refetch()}>
-                Try again
-              </Button>
-            }
-          />
-        )}
+          {isError && (
+            <EmptyState
+              className="m-3 border-none"
+              icon={TriangleAlert}
+              title="We couldn't load the team"
+              description="Check your connection and try again."
+              action={
+                <Button variant="outline" onClick={() => refetch()}>
+                  Try again
+                </Button>
+              }
+            />
+          )}
 
-        {data && users.length === 0 && <NoOneShown filtering={filtering} tab={tab} onClear={clearFilters} />}
+          {data && users.length === 0 && <NoOneShown filtering={filtering} tab={tab} onClear={clearFilters} />}
 
-        {data && users.length > 0 && (
-          <>
-            {/* While another page or filter loads, the rows on screen fade a little instead of vanishing. */}
+          {data && users.length > 0 && (
+            // While another page or filter loads, the rows on screen fade a little instead of vanishing.
             <ul className={cn("divide-y transition-opacity", isFetching && "opacity-60")} aria-busy={isFetching}>
               <li className={cn("hidden gap-4 px-4 py-2 text-xs font-semibold text-muted-foreground md:grid", COLUMNS)}>
                 <span>Person</span>
@@ -187,9 +190,9 @@ export function TeamPage() {
                 <UserRow key={user.id} user={user} isMe={user.id === me?.id} />
               ))}
             </ul>
-            <Pagination meta={meta} onPage={goToPage} onLimit={(next) => change({ limit: next === DEFAULT_LIMIT ? null : next })} />
-          </>
-        )}
+          )}
+        </div>
+        {!isError && <Pagination meta={meta} onPage={goToPage} onLimit={(next) => change({ limit: next === DEFAULT_LIMIT ? null : next })} />}
       </section>
 
       <TeammateDialog open={adding} onOpenChange={setAdding} />

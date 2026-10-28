@@ -220,9 +220,11 @@ export function Select({ className, active = false, compact = false, children, .
 // How many rows a page of a list can have. The first one is the smallest.
 export const PAGE_SIZES = [10, 20, 50];
 
-// The bar under a list: which rows are on screen, how many a page has, and the page numbers.
+// The bar at the bottom of a list: which rows are on screen, how many a page has, and the page numbers.
 // `meta` is what the API says about the pages: { page, limit, total, pages }. It is always there,
-// even for a list that fits on one page, so the list looks the same whatever its size.
+// even for a list that fits on one page, so the list looks the same whatever its size. It sticks to
+// the bottom of the screen while a long list scrolls; the list's card must not have overflow-hidden
+// (use overflow-clip), or the bar can't stick.
 export function Pagination({ meta, onPage, onLimit }) {
   if (!meta || meta.total === 0) return null;
   const { page, limit, total, pages } = meta;
@@ -230,7 +232,7 @@ export function Pagination({ meta, onPage, onLimit }) {
   const last = Math.min(page * limit, total);
 
   return (
-    <nav aria-label="Pages" className="flex flex-col gap-3 border-t px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between">
+    <nav aria-label="Pages" className="sticky bottom-0 z-10 flex flex-col gap-3 border-t bg-card px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between">
       <p className="text-muted-foreground tabular-nums">
         Showing{" "}
         <span className="font-medium text-foreground">
