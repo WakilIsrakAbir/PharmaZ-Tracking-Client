@@ -83,9 +83,10 @@ export function TeamPage() {
   }, [meta, page, setParams]);
 
   return (
-    // The page is at least as tall as the screen (under the top bar on phones), and the list's card
-    // fills it, so the page bar sits at the bottom of the screen even when the team is small.
-    <div className="flex min-h-[calc(100dvh-6.5rem)] flex-col gap-6 lg:min-h-[calc(100dvh-4rem)]">
+    // The page reaches the very bottom of the screen (it takes over the page's bottom padding, under
+    // the top bar on phones), and the list's card fills it, so the page bar touches the bottom edge
+    // even when the team is small.
+    <div className="-mb-6 flex min-h-[calc(100dvh-5rem)] flex-col gap-6 lg:-mb-8 lg:min-h-[calc(100dvh-2rem)]">
       <PageHeader
         title="Team"
         description="Everyone who can sign in to the tracker. Only admins can add people or change their access."
@@ -96,7 +97,8 @@ export function TeamPage() {
         }
       />
 
-      <section className="flex flex-1 flex-col overflow-clip rounded-xl border bg-card">
+      {/* No bottom edge: the card ends at the screen's edge, with the page bar as its last row. */}
+      <section className="flex flex-1 flex-col overflow-clip rounded-t-xl border border-b-0 bg-card">
         {/* The Active / Deactivated tabs and the search box */}
         <div className="flex flex-col gap-3 border-b p-3 sm:flex-row sm:items-center sm:justify-between">
           <Tabs value={tab} onValueChange={(value) => change({ status: value === "active" ? null : value })}>
