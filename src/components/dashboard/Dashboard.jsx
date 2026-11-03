@@ -76,12 +76,13 @@ export function Dashboard() {
       : visits.filter((visit) => visit.type === view.filter);
   const visitsByDay = groupByDay(shownVisits);
   const visitsToday = visits.filter(
-    (visit) => dayKey(visit.visitDate) === today,
+    (visit) => visit?.visitDate && dayKey(visit.visitDate) === today,
   ).length;
   // The month's own visits (the grid also shows a few days of the months around it).
-  const visitsThisMonth = visits.filter((visit) =>
-    dayKey(visit.visitDate).startsWith(view.month),
-  ).length;
+  const visitsThisMonth = visits.filter((visit) => {
+    const key = visit?.visitDate ? dayKey(visit.visitDate) : "";
+    return key && key.startsWith(view.month);
+  }).length;
 
   // Opens a month from the year overview, on today when it's this month, else on the 1st.
   function showMonth(month) {

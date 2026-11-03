@@ -20,15 +20,31 @@ const dhakaClock = new Intl.DateTimeFormat("en-US", {
 // Built from parts, so it never reads the current time (Next.js doesn't allow
 // that while prerendering, which rules out helpers like TZDate).
 function inDhaka(date) {
-  const parts = {};
-  for (const { type, value } of dhakaClock.formatToParts(new Date(date))) parts[type] = Number(value);
-  return new Date(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute, parts.second);
+  if (!date) return new Date();
+  const d = new Date(date);
+  if (isNaN(d.getTime())) return new Date();
+  try {
+    const parts = {};
+    for (const { type, value } of dhakaClock.formatToParts(d)) parts[type] = Number(value);
+    return new Date(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute, parts.second);
+  } catch {
+    return new Date();
+  }
 }
 
-export const formatDate = (date, pattern = "EEE d MMM yyyy") => format(inDhaka(date), pattern);
+export const formatDate = (date, pattern = "EEE d MMM yyyy") => {
+  if (!date) return "";
+  const d = inDhaka(date);
+  if (isNaN(d.getTime())) return "";
+  try {
+    return format(d, pattern);
+  } catch {
+    return "";
+  }
+};
 
 // The Dhaka calendar day of a moment: "2026-10-21"
-export const dayKey = (date) => formatDate(date, "yyyy-MM-dd");
+export const dayKey = (date) => (date ? formatDate(date, "yyyy-MM-dd") : "");
 
 // "2026-10-21" + "17:00" (Dhaka) → an ISO moment for the API.
 export const dhakaDateTime = (day, time = "00:00") => new Date(`${day}T${time}:00+06:00`).toISOString();

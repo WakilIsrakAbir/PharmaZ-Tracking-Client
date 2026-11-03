@@ -40,8 +40,11 @@ export function monthDays(month) {
 // { "2026-10-21": [visit, visit], … } using the day in Dhaka time.
 export function groupByDay(visits) {
   const byDay = {};
+  if (!Array.isArray(visits)) return byDay;
   for (const visit of visits) {
+    if (!visit?.visitDate) continue;
     const day = dayKey(visit.visitDate);
+    if (!day) continue;
     byDay[day] ??= [];
     byDay[day].push(visit);
   }

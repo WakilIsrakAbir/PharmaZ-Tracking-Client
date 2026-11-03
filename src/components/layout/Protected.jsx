@@ -24,8 +24,17 @@ async function Gate({ roles, children }) {
     if (roles) await requireRole(roles);
     else await requireUser();
   } catch (error) {
-    if (isServerUnreachable(error)) return <ServerUnreachable reason={unreachableReason(error)} />;
-    throw error; // the redirects work by throwing, so everything else passes on
+    // Re-throw framework navigation redirects so Next.js can handle routing
+    if (
+      error?.message === "NEXT_REDIRECT" ||
+      error?.digest?.startsWith?.("NEXT_REDIRECT")
+    ) {
+      throw error;
+    }
+    const reason = isServerUnreachable(error)
+      ? unreachableReason(error)
+      : (error?.message || null);
+    return <ServerUnreachable reason={reason} />;
   }
   return children;
 }

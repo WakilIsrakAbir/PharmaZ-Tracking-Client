@@ -30,7 +30,10 @@ export async function getSessionUser() {
 
   let response;
   try {
-    response = await fetch(`${API_URL}/api/v1/auth/me`, { headers: { Cookie: `${SESSION_COOKIE}=${token}` } });
+    response = await fetch(`${API_URL}/api/v1/auth/me`, {
+      headers: { Cookie: `${SESSION_COOKIE}=${token}` },
+      signal: AbortSignal.timeout(8000),
+    });
   } catch (error) {
     // A warning, not an error: it's expected while the API starts. The API's own terminal says why.
     console.warn(`⚠ Can't reach the API at ${API_URL} (${error.cause?.code ?? error.message}). Is it running?`);
@@ -43,9 +46,15 @@ export async function getSessionUser() {
     throw serverUnreachable(response.status === 503 ? body?.error?.message : null);
   }
   if (response.status === 401) return null;
-  if (!response.ok) throw new Error(`The API could not load your account (status ${response.status}).`);
+  if (!response.ok) {
+    const body = await response.json().catch(() => null);
+    throw serverUnreachable(body?.error?.message || `The API could not load your account (status ${response.status}).`);
+  }
 
-  const { data: user } = await response.json();
+  const payload = await response.json().catch(() => null);
+  const user = payload?.data;
+  if (!user) throw serverUnreachable("The API returned an unexpected response.");
+
   return {
     id: user.id,
     name: user.name,
