@@ -25,14 +25,14 @@ export function DoctorFields({ register, errors }) {
   const f = FIELDS.doctor;
   return (
     <>
-      <NumberedField field={f.name} id="name" required wide error={errors.name}>
-        <Input id="name" placeholder="e.g. Dr. Tanvir Ahmed (Cardiology)" {...register("name", { required: "Please enter the doctor's full name." })} />
+      <NumberedField field={f.name} id="name" wide error={errors.name}>
+        <Input id="name" placeholder="e.g. Dr. Tanvir Ahmed (Cardiology)" {...register("name")} />
       </NumberedField>
       <NumberedField field={f.bmdcRegNo} id="bmdcRegNo" error={errors.bmdcRegNo}>
         <Input id="bmdcRegNo" placeholder="e.g. A-43921" {...register("bmdcRegNo")} />
       </NumberedField>
-      <NumberedField field={f.phone} id="phone" required error={errors.phone}>
-        <Input id="phone" type="tel" inputMode="tel" placeholder="01711-234567" {...register("phone", { required: "Please enter a phone number." })} />
+      <NumberedField field={f.phone} id="phone" error={errors.phone}>
+        <Input id="phone" type="tel" inputMode="tel" placeholder="01711-234567" {...register("phone")} />
       </NumberedField>
       <NumberedField field={f.email} id="email" wide error={errors.email}>
         <Input id="email" type="email" inputMode="email" placeholder="name@example.com" {...register("email")} />
@@ -40,8 +40,8 @@ export function DoctorFields({ register, errors }) {
       <NumberedField field={f.chamberName} id="chamberName" wide error={errors.chamberName}>
         <Input id="chamberName" placeholder="e.g. Square Hospital Chambers" {...register("chamberName")} />
       </NumberedField>
-      <NumberedField field={f.address} id="address" required wide error={errors.address}>
-        <Textarea id="address" rows={2} placeholder="Floor, building, road, area, city" {...register("address", { required: "Please enter the chamber address." })} />
+      <NumberedField field={f.address} id="address" wide error={errors.address}>
+        <Textarea id="address" rows={2} placeholder="Floor, building, road, area, city" {...register("address")} />
       </NumberedField>
       <NumberedField field={f.consultationTypes} group error={errors.consultationTypes}>
         <ChoiceChips name="consultationTypes" options={CONSULTATION_TYPES} register={register} />
@@ -82,8 +82,8 @@ export function PharmacyFields({ register, errors }) {
   const f = FIELDS.pharmacy;
   return (
     <>
-      <NumberedField field={f.name} id="name" required wide error={errors.name}>
-        <Input id="name" placeholder="e.g. Rahman Pharmacy" {...register("name", { required: "Please enter the pharmacy name." })} />
+      <NumberedField field={f.name} id="name" wide error={errors.name}>
+        <Input id="name" placeholder="e.g. Rahman Pharmacy" {...register("name")} />
       </NumberedField>
       <NumberedField field={f.pharmacyType} group error={errors.pharmacyType}>
         <ChoiceChips name="pharmacyType" type="radio" options={PHARMACY_TYPES} register={register} />
@@ -91,8 +91,8 @@ export function PharmacyFields({ register, errors }) {
       <NumberedField field={f.ownerName} id="ownerName" error={errors.ownerName}>
         <Input id="ownerName" placeholder="e.g. Abdur Rahman" {...register("ownerName")} />
       </NumberedField>
-      <NumberedField field={f.phone} id="phone" required error={errors.phone}>
-        <Input id="phone" type="tel" inputMode="tel" placeholder="01811-223344" {...register("phone", { required: "Please enter a phone number." })} />
+      <NumberedField field={f.phone} id="phone" error={errors.phone}>
+        <Input id="phone" type="tel" inputMode="tel" placeholder="01811-223344" {...register("phone")} />
       </NumberedField>
       <NumberedField field={f.email} id="email" error={errors.email}>
         <Input id="email" type="email" inputMode="email" placeholder="name@example.com" {...register("email")} />
@@ -111,8 +111,8 @@ export function PharmacyFields({ register, errors }) {
           <Input id="drugLicenseExpireDate" type="date" {...register("drugLicenseExpireDate")} />
         </NumberedField>
       </div>
-      <NumberedField field={f.address} id="address" required wide error={errors.address}>
-        <Textarea id="address" rows={2} placeholder="House, road, area, city" {...register("address", { required: "Please enter the pharmacy address." })} />
+      <NumberedField field={f.address} id="address" wide error={errors.address}>
+        <Textarea id="address" rows={2} placeholder="House, road, area, city" {...register("address")} />
       </NumberedField>
       <NumberedField field={f.area} id="area" error={errors.area}>
         <Input id="area" placeholder="e.g. Dhanmondi" {...register("area")} />
@@ -227,9 +227,7 @@ function TakaInput(props) {
 export function StatusChoice({ register }) {
   return (
     <fieldset className="space-y-2 sm:col-span-2">
-      <legend className="text-sm font-medium">
-        <RequiredLabel>Status</RequiredLabel>
-      </legend>
+      <legend className="text-sm font-medium">Status</legend>
       <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 md:flex md:flex-nowrap">
         {Object.entries(STATUSES).map(([value, status]) => (
           <label

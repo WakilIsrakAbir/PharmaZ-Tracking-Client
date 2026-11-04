@@ -91,7 +91,7 @@ function StatusUpdate({ record }) {
     if (stepsChanged) change.implementationSteps = stepsToSave(steps);
     try {
       await updateStatus.mutateAsync(change);
-      toast.success(statusChanged ? `${record.name} is now in ${STATUSES[status].label}.` : "Update saved.");
+      toast.success(statusChanged ? `${record.name || "Form"} is now in ${STATUSES[status].label}.` : "Update saved.");
     } catch (error) {
       toast.error(error.message);
     }

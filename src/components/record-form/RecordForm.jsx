@@ -84,7 +84,7 @@ function RecordForm({ type, record, visitDay }) {
         router.push(`${path}/${saved.id}`);
         return;
       }
-      toast.success(`${saved.name} is on the calendar for ${formatDate(saved.visitDate, "EEE d MMM, h:mm a")}.`);
+      toast.success(`${saved.name || label} is on the calendar for ${formatDate(saved.visitDate, "EEE d MMM, h:mm a")}.`);
       // This page stays alive in the background; empty it so the next new form starts blank.
       reset(startingValues(type));
       router.push(dashboardLink(saved));
@@ -97,8 +97,8 @@ function RecordForm({ type, record, visitDay }) {
     <form onSubmit={handleSubmit(onSubmit)} noValidate className="mx-auto max-w-4xl space-y-6">
       <PageHeader
         back={{ href: backHref, label: isEditing ? "Back to the form" : TYPES[type].plural }}
-        title={isEditing ? `Edit: ${record.name}` : `New ${label.toLowerCase()} form`}
-        description={isEditing ? "Change anything below, then save." : "Fill this in during or after your visit. Fields with * are required."}
+        title={isEditing ? `Edit: ${record.name || label}` : `New ${label.toLowerCase()} form`}
+        description={isEditing ? "Change anything below, then save." : "Fill this in during or after your visit."}
       />
 
       {/* Part 1: looks like the paper form, a title over a navy line, then the numbered fields. */}
@@ -129,11 +129,11 @@ function RecordForm({ type, record, visitDay }) {
         <h2 className="font-semibold">Visit and status</h2>
         <p className="mt-1 text-sm text-muted-foreground">This is what shows on the calendar.</p>
         <div className="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-2">
-          <FormField id="visitDay" label={<RequiredLabel>Visit date</RequiredLabel>} error={errors.visitDay}>
-            <Input id="visitDay" type="date" min={earliestDay} {...register("visitDay", { required: "Please pick the visit date." })} />
+          <FormField id="visitDay" label="Visit date" error={errors.visitDay}>
+            <Input id="visitDay" type="date" min={earliestDay} {...register("visitDay")} />
           </FormField>
-          <FormField id="visitTime" label={<RequiredLabel>Time</RequiredLabel>} error={errors.visitTime}>
-            <Input id="visitTime" type="time" {...register("visitTime", { required: "Please pick the time." })} />
+          <FormField id="visitTime" label="Time" error={errors.visitTime}>
+            <Input id="visitTime" type="time" {...register("visitTime")} />
           </FormField>
           <StatusChoice register={register} />
           <FormField id="notes" label="Notes" hint="Anything the team should know, e.g. what was agreed." className="sm:col-span-2">
@@ -215,7 +215,7 @@ function startingValues(type, record, visitDay, canPlanPast = false) {
 
 // The form keeps the visit as a day and a time; the API wants one moment (visitDate).
 function toApiValues(type, { visitDay, visitTime, homeDelivery, drugLicenseIssueDate, drugLicenseExpireDate, ...fields }) {
-  const values = { ...fields, visitDate: dhakaDateTime(visitDay, visitTime) };
+  const values = { ...fields, visitDate: dhakaDateTime(visitDay || dayKey(new Date()), visitTime || "10:00") };
   if (type === "pharmacy") {
     values.homeDelivery = booleanFromYesNo(homeDelivery);
     values.drugLicenseIssueDate = drugLicenseIssueDate ? new Date(drugLicenseIssueDate).toISOString() : null;

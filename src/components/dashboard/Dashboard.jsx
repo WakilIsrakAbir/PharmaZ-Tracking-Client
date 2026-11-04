@@ -251,7 +251,7 @@ function DayVisits({ day, now, canPlan, visits, showSubmitter, onPickVisit }) {
                 className="flex w-full items-start gap-3 px-5 py-3.5 text-left transition-colors outline-none hover:bg-muted/50 focus-visible:bg-muted/50"
               >
                 <Avatar
-                  name={visit.name}
+                  name={visit.name || "?"}
                   className="size-10"
                 />
                 <div className="min-w-0 flex-1">
@@ -259,9 +259,9 @@ function DayVisits({ day, now, canPlan, visits, showSubmitter, onPickVisit }) {
                     <TypeIcon type={visit.type} className="size-3.5" />
                     {formatDate(visit.visitDate, "h:mm a")}
                   </p>
-                  <p className="truncate font-semibold">{visit.name}</p>
+                  <p className="truncate font-semibold">{visit.name || `Unnamed ${visit.type}`}</p>
                   <p className="truncate text-sm text-muted-foreground">
-                    {visit.place}
+                    {visit.place || "—"}
                   </p>
                   {peopleLine(visit, { showSubmitter }) && (
                     <p className="mt-0.5 flex items-center gap-1 truncate text-xs text-muted-foreground">

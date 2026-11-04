@@ -46,7 +46,7 @@ export function RecordDetails({ type, id, layout = "page" }) {
 
   return (
     <div className="space-y-6">
-      <PageHeader back={{ href: TYPES[type].path, label: TYPES[type].plural }} title={record.name} actions={<PageActions record={record} />} />
+      <PageHeader back={{ href: TYPES[type].path, label: TYPES[type].plural }} title={record.name || `Unnamed ${TYPES[type].label}`} actions={<PageActions record={record} />} />
       <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
         <div className="space-y-6">
           <DetailsCard record={record} />
@@ -72,7 +72,7 @@ function PageActions({ record }) {
   async function confirmDelete() {
     try {
       await deleteRecord.mutateAsync(record.id);
-      toast.success(`${record.name} was deleted.`);
+      toast.success(`${record.name || label} was deleted.`);
       router.push(path);
     } catch (error) {
       toast.error(error.message);
@@ -93,13 +93,13 @@ function PageActions({ record }) {
       </Button>
       {user?.role === "admin" && (
         <>
-          <Button variant="outline" onClick={() => setConfirming(true)} aria-label={`Delete ${record.name}`} className="text-destructive">
+          <Button variant="outline" onClick={() => setConfirming(true)} aria-label={`Delete ${record.name || label}`} className="text-destructive">
             <Trash2 />
           </Button>
           <ConfirmDialog
             open={confirming}
             onOpenChange={setConfirming}
-            title={`Delete ${record.name}?`}
+            title={`Delete ${record.name || label}?`}
             description={`This removes the ${label.toLowerCase()} form and its history for everyone. It can't be undone.`}
             confirmLabel="Delete"
             destructive
@@ -127,7 +127,7 @@ function DetailsCard({ record }) {
           have their own row, so the name never has to share space with the button. */}
       <div className="p-4 sm:p-5">
         <div className="flex items-start gap-4">
-          <Avatar name={record.name} className="size-14 rounded-xl text-base" />
+          <Avatar name={record.name || "?"} className="size-14 rounded-xl text-base" />
           <div className="min-w-0 flex-1">
             <div className="flex items-start justify-between gap-2">
               <div className="flex flex-wrap items-center gap-1.5 pt-1">
@@ -142,7 +142,7 @@ function DetailsCard({ record }) {
                 </Button>
               )}
             </div>
-            <h2 className="mt-2 text-lg leading-snug font-semibold text-balance">{record.name}</h2>
+            <h2 className="mt-2 text-lg leading-snug font-semibold text-balance">{record.name || `Unnamed ${TYPES[record.type].label}`}</h2>
             {subtitle && <p className="text-sm text-muted-foreground">{subtitle}</p>}
           </div>
         </div>
@@ -188,29 +188,43 @@ function DetailsCard({ record }) {
               {record.chamberNo && ` · ${record.chamberNo}`}
             </span>
           )}
-          <span className={cn("block", record.chamberName && "font-normal text-muted-foreground")}>{record.address}</span>
-          <a href={mapsUrl} target="_blank" rel="noreferrer" className="mt-1 inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline">
-            Open in Google Maps <ExternalLink className="size-3.5" />
-          </a>
+          {record.address ? (
+            <>
+              <span className={cn("block", record.chamberName && "font-normal text-muted-foreground")}>{record.address}</span>
+              <a href={mapsUrl} target="_blank" rel="noreferrer" className="mt-1 inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline">
+                Open in Google Maps <ExternalLink className="size-3.5" />
+              </a>
+            </>
+          ) : !record.chamberName ? (
+            <span className="font-normal text-muted-foreground/70">Not given</span>
+          ) : null}
         </Row>
       </div>
 
       <div className="space-y-4 p-4 sm:p-5">
-        <Row icon={Phone} label="Phone">
-          <span className="tabular-nums">{formatPhone(record.phone)}</span>
-        </Row>
-        <div className="grid grid-cols-2 gap-2">
-          <Button variant="outline" size="sm" asChild>
-            <a href={`tel:${record.phone}`}>
-              <Phone /> Call
-            </a>
-          </Button>
-          <Button variant="outline" size="sm" asChild>
-            <a href={`https://wa.me/${whatsappNumber(record.phone)}`} target="_blank" rel="noreferrer">
-              <MessageCircle /> WhatsApp
-            </a>
-          </Button>
-        </div>
+        {record.phone ? (
+          <>
+            <Row icon={Phone} label="Phone">
+              <span className="tabular-nums">{formatPhone(record.phone)}</span>
+            </Row>
+            <div className="grid grid-cols-2 gap-2">
+              <Button variant="outline" size="sm" asChild>
+                <a href={`tel:${record.phone}`}>
+                  <Phone /> Call
+                </a>
+              </Button>
+              <Button variant="outline" size="sm" asChild>
+                <a href={`https://wa.me/${whatsappNumber(record.phone)}`} target="_blank" rel="noreferrer">
+                  <MessageCircle /> WhatsApp
+                </a>
+              </Button>
+            </div>
+          </>
+        ) : (
+          <Row icon={Phone} label="Phone">
+            <span className="font-normal text-muted-foreground/70">Not given</span>
+          </Row>
+        )}
         {record.email && (
           <Row icon={Mail} label="Email">
             <a href={`mailto:${record.email}`} className="hover:underline">

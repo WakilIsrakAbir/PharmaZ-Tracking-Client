@@ -266,7 +266,7 @@ const COLUMNS = "md:grid-cols-[minmax(0,2fr)_minmax(0,1.4fr)_minmax(0,1.4fr)_10r
 
 function RecordRow({ record, path, showSubmitter }) {
   const people = peopleLine(record, { showSubmitter, showAssigned: false }); // the assigned have their own column
-  const place = record.type === "doctor" ? record.chamberName || record.address : [record.area, record.district].filter(Boolean).join(", ") || record.address;
+  const place = record.type === "doctor" ? record.chamberName || record.address || "—" : [record.area, record.district].filter(Boolean).join(", ") || record.address || "—";
   return (
     <li>
       <Link
@@ -274,17 +274,17 @@ function RecordRow({ record, path, showSubmitter }) {
         className={cn("grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1 px-4 py-3 transition-colors outline-none hover:bg-muted/40 focus-visible:bg-muted/40", COLUMNS)}
       >
         <div className="flex min-w-0 items-center gap-3">
-          <Avatar name={record.name} className="size-10" />
+          <Avatar name={record.name || "?"} className="size-10" />
           <div className="min-w-0">
             <div className="flex items-center gap-1.5">
-              <p className="truncate font-semibold">{record.name}</p>
+              <p className="truncate font-semibold">{record.name || `Unnamed ${record.type}`}</p>
               {record.type === "pharmacy" && record.pharmacyType && (
                 <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[0.65rem] font-medium uppercase text-muted-foreground">
                   {record.pharmacyType === "chain" ? "Chain" : "Single"}
                 </span>
               )}
             </div>
-            <p className="truncate text-sm text-muted-foreground tabular-nums">{formatPhone(record.phone)}</p>
+            <p className="truncate text-sm text-muted-foreground tabular-nums">{record.phone ? formatPhone(record.phone) : "—"}</p>
           </div>
         </div>
         <div className="col-span-2 row-start-2 min-w-0 md:col-span-1 md:row-start-auto">

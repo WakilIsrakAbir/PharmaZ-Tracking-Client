@@ -232,7 +232,7 @@ function VisitChip({ visit, isPicked, onClick, className }) {
         <TypeIcon type={visit.type} className="size-3 shrink-0 opacity-70" />
         {formatDate(visit.visitDate, "h:mm a")}
       </span>
-      <span className="mt-0.5 block min-w-0 flex-1 truncate xl:mt-0">{visit.name}</span>
+      <span className="mt-0.5 block min-w-0 flex-1 truncate xl:mt-0">{visit.name || "Unnamed"}</span>
     </button>
   );
 }
