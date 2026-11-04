@@ -7,7 +7,7 @@
 
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { CONSULTATION_TYPES, DAYS, FIELDS, PAYMENT_METHODS, SLOT_DURATIONS, STATUSES } from "@/lib/constants";
+import { CONSULTATION_TYPES, DAYS, FIELDS, PAYMENT_METHODS, PHARMACY_TYPES, SLOT_DURATIONS, STATUSES } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
 const SELECT_CLASSES =
@@ -85,13 +85,16 @@ export function PharmacyFields({ register, errors }) {
       <NumberedField field={f.name} id="name" required wide error={errors.name}>
         <Input id="name" placeholder="e.g. Rahman Pharmacy" {...register("name", { required: "Please enter the pharmacy name." })} />
       </NumberedField>
+      <NumberedField field={f.pharmacyType} group error={errors.pharmacyType}>
+        <ChoiceChips name="pharmacyType" type="radio" options={PHARMACY_TYPES} register={register} />
+      </NumberedField>
       <NumberedField field={f.ownerName} id="ownerName" error={errors.ownerName}>
         <Input id="ownerName" placeholder="e.g. Abdur Rahman" {...register("ownerName")} />
       </NumberedField>
       <NumberedField field={f.phone} id="phone" required error={errors.phone}>
         <Input id="phone" type="tel" inputMode="tel" placeholder="01811-223344" {...register("phone", { required: "Please enter a phone number." })} />
       </NumberedField>
-      <NumberedField field={f.email} id="email" wide error={errors.email}>
+      <NumberedField field={f.email} id="email" error={errors.email}>
         <Input id="email" type="email" inputMode="email" placeholder="name@example.com" {...register("email")} />
       </NumberedField>
       <NumberedField field={f.drugLicenseNo} id="drugLicenseNo" error={errors.drugLicenseNo}>
@@ -100,6 +103,14 @@ export function PharmacyFields({ register, errors }) {
       <NumberedField field={f.tradeLicenseNo} id="tradeLicenseNo" error={errors.tradeLicenseNo}>
         <Input id="tradeLicenseNo" {...register("tradeLicenseNo")} />
       </NumberedField>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:col-span-2">
+        <NumberedField field={f.drugLicenseIssueDate} id="drugLicenseIssueDate" error={errors.drugLicenseIssueDate}>
+          <Input id="drugLicenseIssueDate" type="date" {...register("drugLicenseIssueDate")} />
+        </NumberedField>
+        <NumberedField field={f.drugLicenseExpireDate} id="drugLicenseExpireDate" error={errors.drugLicenseExpireDate}>
+          <Input id="drugLicenseExpireDate" type="date" {...register("drugLicenseExpireDate")} />
+        </NumberedField>
+      </div>
       <NumberedField field={f.address} id="address" required wide error={errors.address}>
         <Textarea id="address" rows={2} placeholder="House, road, area, city" {...register("address", { required: "Please enter the pharmacy address." })} />
       </NumberedField>
@@ -212,26 +223,23 @@ function TakaInput(props) {
   );
 }
 
-// The status, as three big choices.
+// The status choices in one row without description hints (wraps to 2 lines if needed, never truncated).
 export function StatusChoice({ register }) {
   return (
     <fieldset className="space-y-2 sm:col-span-2">
       <legend className="text-sm font-medium">
         <RequiredLabel>Status</RequiredLabel>
       </legend>
-      <div className="flex flex-wrap gap-2">
+      <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 md:grid-cols-6">
         {Object.entries(STATUSES).map(([value, status]) => (
           <label
             key={value}
-            className="flex flex-auto basis-[45%] cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors hover:bg-muted/50 has-checked:border-primary has-checked:bg-secondary has-focus-visible:ring-3 has-focus-visible:ring-ring/50 lg:basis-[30%] xl:basis-[18%]"
+            className="flex cursor-pointer items-center gap-1.5 rounded-lg border px-2 py-2 transition-colors hover:bg-muted/50 has-checked:border-primary has-checked:bg-secondary has-focus-visible:ring-3 has-focus-visible:ring-ring/50"
           >
-            <input type="radio" value={value} className="mt-1 size-4 accent-primary" {...register("status")} />
-            <span>
-              <span className="flex items-center gap-2 text-sm font-semibold">
-                <span className={cn("size-2 rounded-full", status.dot)} />
-                {status.label}
-              </span>
-              <span className="block text-xs text-muted-foreground">{status.hint}</span>
+            <input type="radio" value={value} className="size-3.5 shrink-0 accent-primary" {...register("status")} />
+            <span className={cn("size-2 shrink-0 rounded-full", status.dot)} />
+            <span className="min-w-0 text-xs font-semibold leading-tight break-words text-foreground">
+              {status.label}
             </span>
           </label>
         ))}

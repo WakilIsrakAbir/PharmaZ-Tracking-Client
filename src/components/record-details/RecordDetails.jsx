@@ -269,10 +269,14 @@ function Row({ icon: Icon, label, children }) {
   );
 }
 
-// Doctors show their BMDC number under the name; pharmacies show the owner.
+// Doctors show their BMDC number under the name; pharmacies show the type and owner.
 function subtitleOf(record) {
   if (record.type === "doctor" && record.bmdcRegNo) return `BMDC ${record.bmdcRegNo}`;
-  if (record.type === "pharmacy" && record.ownerName) return `Owner: ${record.ownerName}`;
+  if (record.type === "pharmacy") {
+    const parts = [record.pharmacyType === "chain" ? "Chain Pharmacy" : "Single Pharmacy"];
+    if (record.ownerName) parts.push(`Owner: ${record.ownerName}`);
+    return parts.join(" · ");
+  }
   return "";
 }
 
@@ -285,7 +289,7 @@ function FormCard({ record }) {
     <Card title={TYPES[record.type].formTitle}>
       <dl className="divide-y">
         {rows.map(([no, label, value]) => (
-          <div key={no} className="flex gap-3 py-2.5">
+          <div key={`${no}-${label}`} className="flex gap-3 py-2.5">
             <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-primary text-[10px] font-semibold text-primary-foreground">
               {no}
             </span>
@@ -334,10 +338,13 @@ function pharmacyRows(record) {
   const f = FIELDS.pharmacy;
   return [
     row(f.name, record.name),
+    row(f.pharmacyType, record.pharmacyType === "chain" ? "Chain" : "Single"),
     row(f.ownerName, record.ownerName),
     row(f.phone, formatPhone(record.phone)),
     row(f.email, record.email),
     row(f.drugLicenseNo, record.drugLicenseNo),
+    row(f.drugLicenseIssueDate, record.drugLicenseIssueDate ? formatDate(record.drugLicenseIssueDate) : ""),
+    row(f.drugLicenseExpireDate, record.drugLicenseExpireDate ? formatDate(record.drugLicenseExpireDate) : ""),
     row(f.tradeLicenseNo, record.tradeLicenseNo),
     row(f.address, record.address),
     row(f.area, record.area),

@@ -29,6 +29,13 @@ export const CALL_STATUSES = {
 
 // The onboarding steps, in order. The classes use the status colors in globals.css.
 export const STATUSES = {
+  account_creation: {
+    label: "Account Creation",
+    hint: "Account created in PharmaZ247",
+    dot: "bg-status-account",
+    badge: "bg-status-account-soft text-status-account-ink",
+    chip: "bg-status-account-soft text-status-account-ink border-status-account",
+  },
   demo: {
     label: "Demo",
     hint: "First visit: showing PharmaZ247",
@@ -89,6 +96,11 @@ export const CONSULTATION_TYPES = [
 
 export const SLOT_DURATIONS = [10, 15, 20, 30, 45, 60];
 
+export const PHARMACY_TYPES = [
+  { value: "single", label: "Single" },
+  { value: "chain", label: "Chain" },
+];
+
 export const PAYMENT_METHODS = [
   { value: "cash", label: "Cash" },
   { value: "bkash", label: "bKash" },
@@ -116,10 +128,13 @@ export const FIELDS = {
   },
   pharmacy: {
     name: [1, "Pharmacy Name"],
+    pharmacyType: [2, "Pharmacy Type"],
     ownerName: [3, "Owner Name"],
     phone: [4, "Phone No"],
     email: [5, "Email"],
     drugLicenseNo: [6, "Drug License No."],
+    drugLicenseIssueDate: [6, "Issue Date"],
+    drugLicenseExpireDate: [6, "Expire Date"],
     tradeLicenseNo: [7, "Trade License No."],
     address: [8, "Address"],
     area: [9, "Area / Thana"],

@@ -276,7 +276,14 @@ function RecordRow({ record, path, showSubmitter }) {
         <div className="flex min-w-0 items-center gap-3">
           <Avatar name={record.name} className="size-10" />
           <div className="min-w-0">
-            <p className="truncate font-semibold">{record.name}</p>
+            <div className="flex items-center gap-1.5">
+              <p className="truncate font-semibold">{record.name}</p>
+              {record.type === "pharmacy" && record.pharmacyType && (
+                <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[0.65rem] font-medium uppercase text-muted-foreground">
+                  {record.pharmacyType === "chain" ? "Chain" : "Single"}
+                </span>
+              )}
+            </div>
             <p className="truncate text-sm text-muted-foreground tabular-nums">{formatPhone(record.phone)}</p>
           </div>
         </div>

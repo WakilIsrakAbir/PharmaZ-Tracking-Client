@@ -107,7 +107,12 @@ function RecordForm({ type, record, visitDay }) {
           <h2 className="text-xl font-bold tracking-tight text-primary">{formTitle}</h2>
           {marketingPerson && (
             <p className="text-sm text-muted-foreground">
-              Marketing person: <span className="font-medium text-foreground">{marketingPerson.name}</span>
+              {marketingPerson.role === "admin" || (signedInUser?.id === marketingPerson?.id && isAdmin)
+                ? "Admin"
+                : marketingPerson.role === "support"
+                  ? "Support"
+                  : "Marketing person"}
+              : <span className="font-medium text-foreground">{marketingPerson.name}</span>
               {marketingPerson.phone && <span className="tabular-nums"> · {formatPhone(marketingPerson.phone)}</span>}
             </p>
           )}
@@ -176,7 +181,7 @@ function startingValues(type, record, visitDay, canPlanPast = false) {
     availableTo: text("availableTo"),
     visitDay: visitDate,
     visitTime: record ? toTimeInput(record.visitDate) : "10:00",
-    status: record?.status ?? "demo", // a new onboarding starts with the demo visit
+    status: record?.status ?? "account_creation", // a new onboarding starts with account creation
     notes: text("notes"),
   };
 
@@ -195,8 +200,11 @@ function startingValues(type, record, visitDay, canPlanPast = false) {
 
   return {
     ...shared,
+    pharmacyType: record?.pharmacyType ?? "single",
     ownerName: text("ownerName"),
     drugLicenseNo: text("drugLicenseNo"),
+    drugLicenseIssueDate: record?.drugLicenseIssueDate ? toDateInput(record.drugLicenseIssueDate) : "",
+    drugLicenseExpireDate: record?.drugLicenseExpireDate ? toDateInput(record.drugLicenseExpireDate) : "",
     tradeLicenseNo: text("tradeLicenseNo"),
     area: text("area"),
     district: text("district"),
@@ -206,9 +214,13 @@ function startingValues(type, record, visitDay, canPlanPast = false) {
 }
 
 // The form keeps the visit as a day and a time; the API wants one moment (visitDate).
-function toApiValues(type, { visitDay, visitTime, homeDelivery, ...fields }) {
+function toApiValues(type, { visitDay, visitTime, homeDelivery, drugLicenseIssueDate, drugLicenseExpireDate, ...fields }) {
   const values = { ...fields, visitDate: dhakaDateTime(visitDay, visitTime) };
-  if (type === "pharmacy") values.homeDelivery = booleanFromYesNo(homeDelivery);
+  if (type === "pharmacy") {
+    values.homeDelivery = booleanFromYesNo(homeDelivery);
+    values.drugLicenseIssueDate = drugLicenseIssueDate ? new Date(drugLicenseIssueDate).toISOString() : null;
+    values.drugLicenseExpireDate = drugLicenseExpireDate ? new Date(drugLicenseExpireDate).toISOString() : null;
+  }
   return values;
 }
 
