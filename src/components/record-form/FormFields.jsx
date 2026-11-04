@@ -223,22 +223,34 @@ function TakaInput(props) {
   );
 }
 
-// The status choices in one row without description hints (wraps to 2 lines if needed, never truncated).
+// The status choices in one row without description hints (Implementation and Account Creation get larger width).
 export function StatusChoice({ register }) {
   return (
     <fieldset className="space-y-2 sm:col-span-2">
       <legend className="text-sm font-medium">
         <RequiredLabel>Status</RequiredLabel>
       </legend>
-      <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 md:grid-cols-6">
+      <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 md:flex md:flex-nowrap">
         {Object.entries(STATUSES).map(([value, status]) => (
           <label
             key={value}
-            className="flex cursor-pointer items-center gap-1.5 rounded-lg border px-2 py-2 transition-colors hover:bg-muted/50 has-checked:border-primary has-checked:bg-secondary has-focus-visible:ring-3 has-focus-visible:ring-ring/50"
+            className={cn(
+              "flex cursor-pointer items-center gap-1.5 rounded-lg border px-2.5 py-2 transition-colors hover:bg-muted/50 has-checked:border-primary has-checked:bg-secondary has-focus-visible:ring-3 has-focus-visible:ring-ring/50",
+              value === "implementation"
+                ? "md:flex-[1.4]"
+                : value === "account_creation"
+                  ? "md:flex-[1.15]"
+                  : "md:flex-1",
+            )}
           >
             <input type="radio" value={value} className="size-3.5 shrink-0 accent-primary" {...register("status")} />
             <span className={cn("size-2 shrink-0 rounded-full", status.dot)} />
-            <span className="min-w-0 text-xs font-semibold leading-tight break-words text-foreground">
+            <span
+              className={cn(
+                "min-w-0 text-xs font-semibold leading-tight text-foreground",
+                value === "account_creation" ? "break-words" : "whitespace-nowrap",
+              )}
+            >
               {status.label}
             </span>
           </label>
