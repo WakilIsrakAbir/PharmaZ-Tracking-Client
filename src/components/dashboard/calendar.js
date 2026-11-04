@@ -12,7 +12,9 @@ export function readView(params, today) {
   if (!/^\d{4}-\d{2}$/.test(month ?? "")) month = thisMonth;
 
   let day = params.get("day");
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(day ?? "")) day = month === thisMonth ? today : `${month}-01`;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day ?? "") || !day.startsWith(month)) {
+    day = month === thisMonth ? today : `${month}-01`;
+  }
 
   const type = params.get("type");
   const id = params.get("id");

@@ -113,6 +113,15 @@ export function MonthCalendar({ month, days, visitsByDay, today, pickedDay, pick
 // A past day is greyed: its visits can still be opened and updated, but marketing people can't plan
 // anything new there (`canPlanPast` is true for admins, who may enter a visit that already happened).
 function DayCell({ date, day, visits, inMonth, isToday, isPast, canPlanPast, isPicked, pickedVisitId, onPickDay, onPickVisit }) {
+  if (!inMonth) {
+    return (
+      <div
+        aria-hidden="true"
+        className="min-h-16 border-r border-b bg-muted/30 select-none pointer-events-none nth-[7n]:border-r-0 nth-last-[-n+7]:border-b-0 sm:min-h-28 xl:min-h-0"
+      />
+    );
+  }
+
   const isFriday = date.getDay() === 5; // the weekend in Bangladesh
   const hiddenCount = visits.length - CHIPS_PER_DAY;
   const hiddenCountXl = visits.length - CHIPS_PER_DAY_XL;
@@ -123,8 +132,7 @@ function DayCell({ date, day, visits, inMonth, isToday, isPast, canPlanPast, isP
       onClick={() => onPickDay(day)}
       className={cn(
         "relative min-h-16 cursor-pointer overflow-hidden border-r border-b p-1.5 transition-colors nth-[7n]:border-r-0 nth-last-[-n+7]:border-b-0 hover:bg-muted/40 sm:min-h-28 xl:flex xl:min-h-0 xl:flex-col xl:p-1",
-        !inMonth && "bg-muted/30",
-        inMonth && isFriday && "bg-muted/25",
+        isFriday && "bg-muted/25",
         isPast && "bg-muted/50 hover:bg-muted/60",
         isPicked && "bg-secondary/70 hover:bg-secondary/70",
         isToday && "bg-status-implementation-soft/70 hover:bg-status-implementation-soft", // today is green, never greyed like the past
@@ -141,7 +149,7 @@ function DayCell({ date, day, visits, inMonth, isToday, isPast, canPlanPast, isP
         aria-pressed={isPicked}
         className={cn(
           "flex size-7 items-center justify-center rounded-full text-sm tabular-nums outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
-          (!inMonth || isPast) && "text-muted-foreground/60",
+          isPast && "text-muted-foreground/60",
           isToday && "bg-status-implementation font-semibold text-white",
           isPicked && !isToday && "font-semibold ring-2 ring-primary",
           isPicked && isToday && "ring-2 ring-status-implementation-ink ring-offset-1",
