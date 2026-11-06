@@ -78,13 +78,17 @@ function TeammateForm({ user, onDone }) {
   }
 
   async function onSubmit(values) {
+    const payload = {
+      ...values,
+      phone: values.phone?.trim() ? values.phone.trim() : null,
+    };
     try {
       if (isEditing) {
-        const saved = await updateUser.mutateAsync({ id: user.id, name: values.name, phone: values.phone });
+        const saved = await updateUser.mutateAsync({ id: user.id, name: payload.name, phone: payload.phone });
         toast.success(`${saved.name}'s details were saved.`);
         onDone();
       } else {
-        setCreated(await createUser.mutateAsync(values));
+        setCreated(await createUser.mutateAsync(payload));
       }
     } catch (error) {
       if (!showServerErrors(error, setError)) toast.error(error.message);
@@ -112,15 +116,15 @@ function TeammateForm({ user, onDone }) {
         </FormField>
       )}
 
-      {/* Required: the name and phone number are shown on every form this person submits. */}
-      <FormField id="phone" label="Phone" error={errors.phone} hint="Shown on every form they submit, e.g. 01711-234567">
+      {/* Phone is optional; shown on forms this person submits if given. */}
+      <FormField id="phone" label="Phone" error={errors.phone} hint="Optional. Shown on forms they submit.">
         <Input
           type="tel"
           inputMode="tel"
           autoComplete="off"
           placeholder="01711-234567"
           {...fieldProps("phone", errors.phone)}
-          {...register("phone", { required: "Please enter their phone number." })}
+          {...register("phone")}
         />
       </FormField>
 
