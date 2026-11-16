@@ -10,7 +10,7 @@ import { use, useRef, useState } from "react";
 import Link from "next/link";
 import { io } from "next/cache";
 import { addDays, addMonths, format } from "date-fns";
-import { ArrowLeft, CalendarCheck, Plus, UserRound } from "lucide-react";
+import { ArrowLeft, ArrowRight, CalendarCheck, Plus, UserRound } from "lucide-react";
 
 import { useUser } from "@/components/app-shell/useUser";
 import {
@@ -25,6 +25,7 @@ import { RecordDetails } from "@/components/record-details/RecordDetails";
 import { Avatar, StatusBadge, TypeIcon } from "@/components/shared/common";
 import { Button } from "@/components/ui/button";
 import { useCalendar } from "@/lib/api";
+import { STATUSES } from "@/lib/constants";
 import {
   dayKey,
   dhakaDateTime,
@@ -78,11 +79,16 @@ export function Dashboard() {
   const visitsToday = visits.filter(
     (visit) => visit?.visitDate && dayKey(visit.visitDate) === today,
   ).length;
-  // The month's own visits (the grid also shows a few days of the months around it).
-  const visitsThisMonth = visits.filter((visit) => {
-    const key = visit?.visitDate ? dayKey(visit.visitDate) : "";
-    return key && key.startsWith(view.month);
-  }).length;
+  // The onboardings with a visit this month (the grid also shows a few days of the months around it).
+  // A doctor or pharmacy with several visits this month counts once, like the year overview.
+  const visitsThisMonth = new Set(
+    visits
+      .filter((visit) => {
+        const key = visit?.visitDate ? dayKey(visit.visitDate) : "";
+        return key && key.startsWith(view.month);
+      })
+      .map((visit) => visit.id),
+  ).size;
 
   // Opens a month from the year overview, on today when it's this month, else on the 1st.
   function showMonth(month) {
@@ -244,7 +250,7 @@ function DayVisits({ day, now, canPlan, visits, showSubmitter, onPickVisit }) {
       ) : (
         <ul className="divide-y">
           {visits.map((visit) => (
-            <li key={visit.id}>
+            <li key={visit.key}>
               <button
                 type="button"
                 onClick={() => onPickVisit(visit)}
@@ -263,6 +269,14 @@ function DayVisits({ day, now, canPlan, visits, showSubmitter, onPickVisit }) {
                   <p className="truncate text-sm text-muted-foreground">
                     {visit.place || "—"}
                   </p>
+                  {/* An earlier stage (the badge shows the status it had then): where it stands now. */}
+                  {!visit.current && visit.now && (
+                    <p className="mt-0.5 flex items-center gap-1 truncate text-xs font-medium text-primary">
+                      <ArrowRight className="size-3 shrink-0" aria-hidden="true" />
+                      Now {STATUSES[visit.now.status]?.label} ·{" "}
+                      {formatDate(visit.now.visitDate, "EEE d MMM")}
+                    </p>
+                  )}
                   {peopleLine(visit, { showSubmitter }) && (
                     <p className="mt-0.5 flex items-center gap-1 truncate text-xs text-muted-foreground">
                       <UserRound

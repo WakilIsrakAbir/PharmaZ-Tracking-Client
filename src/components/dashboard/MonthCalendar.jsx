@@ -108,7 +108,8 @@ export function MonthCalendar({ month, days, visitsByDay, today, pickedDay, pick
 }
 
 // One day in the grid. Larger screens show a chip per visit (one line each, at most two, on screens
-// where the calendar fits the screen height); phones show colored dots.
+// where the calendar fits the screen height); phones show colored dots. An onboarding can be on
+// several days, one per stage (the API reads them from its history): each has its own `key`.
 // The last column and the last row have no line of their own: the card's border is already there.
 // A past day is greyed: its visits can still be opened and updated, but marketing people can't plan
 // anything new there (`canPlanPast` is true for admins, who may enter a visit that already happened).
@@ -171,9 +172,9 @@ function DayCell({ date, day, visits, inMonth, isToday, isPast, canPlanPast, isP
       <div className="mt-1 hidden space-y-1 sm:block xl:flex xl:min-h-0 xl:flex-1 xl:flex-col xl:justify-center">
         {visits.slice(0, CHIPS_PER_DAY).map((visit, index) => (
           <VisitChip
-            key={visit.id}
+            key={visit.key}
             visit={visit}
-            isPicked={visit.id === pickedVisitId}
+            isPicked={isPicked && visit.id === pickedVisitId} // a record can be on several days: only the picked day's chip is marked
             className={index >= CHIPS_PER_DAY_XL ? "xl:hidden" : undefined}
             onClick={(event) => {
               event.stopPropagation();
@@ -188,7 +189,7 @@ function DayCell({ date, day, visits, inMonth, isToday, isPast, canPlanPast, isP
       {visits.length > 0 && (
         <div className="mt-1 flex flex-wrap gap-0.5 px-1 sm:hidden" aria-hidden="true">
           {visits.slice(0, 4).map((visit) => (
-            <span key={visit.id} className={cn("size-1.5 rounded-full", STATUSES[visit.status]?.dot)} />
+            <span key={visit.key} className={cn("size-1.5 rounded-full", STATUSES[visit.status]?.dot, !visit.current && "opacity-50")} />
           ))}
         </div>
       )}
@@ -213,26 +214,40 @@ function MoreVisits({ count, total, onClick, className }) {
   );
 }
 
-// A visit in the grid: the time on top, the name under it, colored by status. On large screens,
-// where the calendar fits the screen, the two sit on one line so a chip is half as tall.
+// A visit in the grid: the doctor's or pharmacy's name (the time is in the tooltip and the day list),
+// colored by the status of that visit. The name may take two lines; on large screens, where the
+// calendar fits the screen, it is one line. An earlier stage of an onboarding that has moved on to a
+// later visit (`current` is false) is faded, so where each one stands now is easy to see.
 function VisitChip({ visit, isPicked, onClick, className }) {
+  const name = visit.name || visit.place || "Unnamed";
   return (
     <button
       type="button"
       onClick={onClick}
-      title={`${formatDate(visit.visitDate, "h:mm a")} · ${visit.name} · ${visit.place}`}
+      title={chipTitle(visit, name)}
       className={cn(
-        "block w-full overflow-hidden rounded-md border-l-[3px] px-1.5 py-1 text-left text-[11px] leading-tight transition outline-none hover:brightness-95 focus-visible:ring-2 focus-visible:ring-ring xl:flex xl:items-center xl:gap-1 xl:py-0.5",
+        "flex w-full items-start gap-1 overflow-hidden rounded-md border-l-[3px] px-1.5 py-1 text-left text-[11px] leading-tight font-semibold transition outline-none hover:brightness-95 focus-visible:ring-2 focus-visible:ring-ring xl:items-center xl:py-0.5",
         STATUSES[visit.status]?.chip,
+        !visit.current && "opacity-60 hover:opacity-100",
         isPicked && "ring-2 ring-primary ring-offset-1",
         className,
       )}
     >
-      <span className="flex shrink-0 items-center gap-1 font-semibold tabular-nums">
-        <TypeIcon type={visit.type} className="size-3 shrink-0 opacity-70" />
-        {formatDate(visit.visitDate, "h:mm a")}
-      </span>
-      <span className="mt-0.5 block min-w-0 flex-1 truncate xl:mt-0">{visit.name || "Unnamed"}</span>
+      <TypeIcon type={visit.type} className="mt-px size-3 shrink-0 opacity-70 xl:mt-0" />
+      {/* Up to two lines on smaller screens; one line cut with "…" where the calendar fits the screen
+          (line-clamp would drop the whole last word, "Rahman…" instead of "Rahman Phar…"). */}
+      <span className="line-clamp-2 min-w-0 flex-1 wrap-break-word xl:hidden">{name}</span>
+      <span className="hidden min-w-0 flex-1 truncate xl:block">{name}</span>
     </button>
   );
+}
+
+// "11:00 AM · Dr. Tanvir Ahmed · Square Hospital Chambers", and for an earlier stage where the
+// onboarding stands now: "… · Earlier stage, now Ongoing on 10 Nov".
+function chipTitle(visit, name) {
+  const parts = [formatDate(visit.visitDate, "h:mm a"), name, visit.place !== name && visit.place];
+  if (!visit.current && visit.now) {
+    parts.push(`Earlier stage, now ${STATUSES[visit.now.status]?.label} on ${formatDate(visit.now.visitDate, "d MMM")}`);
+  }
+  return parts.filter(Boolean).join(" · ");
 }
