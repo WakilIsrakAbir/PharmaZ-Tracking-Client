@@ -39,6 +39,14 @@ export function monthDays(month) {
   });
 }
 
+// An earlier stage of an onboarding that has moved on to a later visit (shown faded). Only
+// `current: false` counts, so an API without the field (an older server) shows every visit as current.
+export const isEarlierVisit = (visit) => visit?.current === false;
+
+// Tells apart the visits of one record, which can be on several days. An older server sends no
+// `key`, and one visit per record, so the record id is enough there.
+export const visitKey = (visit) => visit.key ?? visit.id;
+
 // { "2026-10-21": [visit, visit], … } using the day in Dhaka time.
 export function groupByDay(visits) {
   const byDay = {};

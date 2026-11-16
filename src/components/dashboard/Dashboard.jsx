@@ -15,9 +15,11 @@ import { ArrowLeft, ArrowRight, CalendarCheck, Plus, UserRound } from "lucide-re
 import { useUser } from "@/components/app-shell/useUser";
 import {
   groupByDay,
+  isEarlierVisit,
   monthDays,
   monthStart,
   readView,
+  visitKey,
 } from "@/components/dashboard/calendar";
 import { MonthCalendar } from "@/components/dashboard/MonthCalendar";
 import { YearOverview } from "@/components/dashboard/YearOverview";
@@ -250,7 +252,7 @@ function DayVisits({ day, now, canPlan, visits, showSubmitter, onPickVisit }) {
       ) : (
         <ul className="divide-y">
           {visits.map((visit) => (
-            <li key={visit.key}>
+            <li key={visitKey(visit)}>
               <button
                 type="button"
                 onClick={() => onPickVisit(visit)}
@@ -270,7 +272,7 @@ function DayVisits({ day, now, canPlan, visits, showSubmitter, onPickVisit }) {
                     {visit.place || "—"}
                   </p>
                   {/* An earlier stage (the badge shows the status it had then): where it stands now. */}
-                  {!visit.current && visit.now && (
+                  {isEarlierVisit(visit) && visit.now && (
                     <p className="mt-0.5 flex items-center gap-1 truncate text-xs font-medium text-primary">
                       <ArrowRight className="size-3 shrink-0" aria-hidden="true" />
                       Now {STATUSES[visit.now.status]?.label} ·{" "}

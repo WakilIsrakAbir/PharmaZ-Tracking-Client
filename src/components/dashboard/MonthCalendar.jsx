@@ -8,7 +8,7 @@
 import { format } from "date-fns";
 import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 
-import { monthStart } from "@/components/dashboard/calendar";
+import { isEarlierVisit, monthStart, visitKey } from "@/components/dashboard/calendar";
 import { TypeIcon } from "@/components/shared/common";
 import { Button } from "@/components/ui/button";
 import { STATUSES } from "@/lib/constants";
@@ -172,7 +172,7 @@ function DayCell({ date, day, visits, inMonth, isToday, isPast, canPlanPast, isP
       <div className="mt-1 hidden space-y-1 sm:block xl:flex xl:min-h-0 xl:flex-1 xl:flex-col xl:justify-center">
         {visits.slice(0, CHIPS_PER_DAY).map((visit, index) => (
           <VisitChip
-            key={visit.key}
+            key={visitKey(visit)}
             visit={visit}
             isPicked={isPicked && visit.id === pickedVisitId} // a record can be on several days: only the picked day's chip is marked
             className={index >= CHIPS_PER_DAY_XL ? "xl:hidden" : undefined}
@@ -189,7 +189,7 @@ function DayCell({ date, day, visits, inMonth, isToday, isPast, canPlanPast, isP
       {visits.length > 0 && (
         <div className="mt-1 flex flex-wrap gap-0.5 px-1 sm:hidden" aria-hidden="true">
           {visits.slice(0, 4).map((visit) => (
-            <span key={visit.key} className={cn("size-1.5 rounded-full", STATUSES[visit.status]?.dot, !visit.current && "opacity-50")} />
+            <span key={visitKey(visit)} className={cn("size-1.5 rounded-full", STATUSES[visit.status]?.dot, isEarlierVisit(visit) && "opacity-50")} />
           ))}
         </div>
       )}
@@ -228,7 +228,7 @@ function VisitChip({ visit, isPicked, onClick, className }) {
       className={cn(
         "flex w-full items-start gap-1 overflow-hidden rounded-md border-l-[3px] px-1.5 py-1 text-left text-[11px] leading-tight font-semibold transition outline-none hover:brightness-95 focus-visible:ring-2 focus-visible:ring-ring xl:items-center xl:py-0.5",
         STATUSES[visit.status]?.chip,
-        !visit.current && "opacity-60 hover:opacity-100",
+        isEarlierVisit(visit) && "opacity-60 hover:opacity-100",
         isPicked && "ring-2 ring-primary ring-offset-1",
         className,
       )}
@@ -246,7 +246,7 @@ function VisitChip({ visit, isPicked, onClick, className }) {
 // onboarding stands now: "… · Earlier stage, now Ongoing on 10 Nov".
 function chipTitle(visit, name) {
   const parts = [formatDate(visit.visitDate, "h:mm a"), name, visit.place !== name && visit.place];
-  if (!visit.current && visit.now) {
+  if (isEarlierVisit(visit) && visit.now) {
     parts.push(`Earlier stage, now ${STATUSES[visit.now.status]?.label} on ${formatDate(visit.now.visitDate, "d MMM")}`);
   }
   return parts.filter(Boolean).join(" · ");
