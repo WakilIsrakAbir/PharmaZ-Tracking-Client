@@ -11,7 +11,9 @@ export function proxy(request) {
 
   if (!isLoginPage && !hasSessionCookie) {
     const loginUrl = new URL("/login", request.url);
-    if (pathname !== "/") loginUrl.searchParams.set("next", pathname + search);
+    // Come back to the same page after signing in, also to a dashboard view such as the visit an
+    // email links to (/?month=…&day=…&type=…&id=…). The plain dashboard needs no "next".
+    if (pathname !== "/" || search) loginUrl.searchParams.set("next", pathname + search);
     return NextResponse.redirect(loginUrl);
   }
 
