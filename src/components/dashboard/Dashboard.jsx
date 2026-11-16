@@ -10,7 +10,7 @@ import { use, useRef, useState } from "react";
 import Link from "next/link";
 import { io } from "next/cache";
 import { addDays, addMonths, format } from "date-fns";
-import { ArrowLeft, ArrowRight, CalendarCheck, CircleCheck, History, Plus, UserRound } from "lucide-react";
+import { ArrowLeft, ArrowRight, CalendarCheck, ChevronRight, CornerDownRight, History, Plus } from "lucide-react";
 
 import { useUser } from "@/components/app-shell/useUser";
 import {
@@ -24,7 +24,7 @@ import {
 import { MonthCalendar } from "@/components/dashboard/MonthCalendar";
 import { YearOverview } from "@/components/dashboard/YearOverview";
 import { RecordDetails } from "@/components/record-details/RecordDetails";
-import { Avatar, StatusBadge, TypeIcon } from "@/components/shared/common";
+import { StatusBadge, TypeIcon } from "@/components/shared/common";
 import { Button } from "@/components/ui/button";
 import { useCalendar } from "@/lib/api";
 import { STATUSES } from "@/lib/constants";
@@ -235,8 +235,8 @@ export function Dashboard() {
 // Admins see the whole team's visits, so each one also says whose it is (and who is assigned).
 // `canPlan` is false on a past day for marketing people: it only shows what happened (its visits can
 // still be opened and updated), so the "New … form" buttons stay away. Admins can plan on any day.
-// Each visit (DayVisitRow) says whether it is where the onboarding stands now ("Latest") or an earlier
-// stage that was updated later (with where it stands now); the header counts the ones updated later.
+// Each visit is a DayVisitRow: an earlier stage that was updated later says where it stands now; the
+// header counts those.
 // ---------------------------------------------------------------------------
 function DayVisits({ day, now, canPlan, visits, showSubmitter, onPickVisit }) {
   const middayOfDay = dhakaDateTime(day, "12:00");
@@ -281,14 +281,15 @@ function DayVisits({ day, now, canPlan, visits, showSubmitter, onPickVisit }) {
   );
 }
 
-// One visit in the day list, one fact per line so nothing has to squeeze:
-//   [avatar]  Skin Pharma 24                              (the name gets the whole width)
-//             Square Hospital Chambers                    (a doctor's chamber, when there is one)
-//             [● Account Creation]  ⟳ Updated later   or  [● Setup]  ✓ Latest
-//             🔗 10:39 – 11:30 PM · 51 min
-//             👤 by Wakil Israk Abir · with Ferdus Ahmed
-//             ┌ Now [● Setup] Fri 6 Nov · 10:00 AM ┐       (an earlier visit: where it stands now)
-// "Latest" or "Updated later" sits right beside the status on every row, so a busy day reads at a glance.
+// One visit in the day list, in the calendar's own look: a bar in the status color on the left
+// (like the chips in the grid), the time first, the name, then the status with who it belongs to.
+//   ┃ 🩺 10:00 – 11:30 AM · 1 hr 30 min
+//   ┃ Dr. Md. Mashiur Rahman
+//   ┃ Square Hospital Chambers                         (a doctor's chamber, when there is one)
+//   ┃ [● Account Creation]  by Wakil Israk Abir                         ›
+//   ┃ ↳ Now [● Implementation] · Tue 17 Nov                    (an earlier visit only)
+// An earlier stage (updated later) has a faint bar and says where the onboarding stands now; a visit
+// without that line is the latest one. The day's header counts how many were updated later.
 function DayVisitRow({ visit, showSubmitter, onPick }) {
   const earlier = isEarlierVisit(visit);
   const people = peopleLine(visit, { showSubmitter });
@@ -296,45 +297,31 @@ function DayVisitRow({ visit, showSubmitter, onPick }) {
     <button
       type="button"
       onClick={onPick}
-      className="flex w-full items-start gap-3 px-5 py-4 text-left transition-colors outline-none hover:bg-muted/50 focus-visible:bg-muted/50"
+      className="group flex w-full items-stretch gap-3 px-5 py-3.5 text-left transition-colors outline-none hover:bg-muted/40 focus-visible:bg-muted/40"
     >
-      <Avatar name={visit.name || "?"} className="size-10" />
+      <span className={cn("w-1 shrink-0 rounded-full", STATUSES[visit.status]?.dot, earlier && "opacity-35")} aria-hidden="true" />
       <div className="min-w-0 flex-1">
-        <p className="line-clamp-2 leading-snug font-semibold">{visit.name || `Unnamed ${visit.type}`}</p>
-        {visit.place && visit.place !== visit.name && <p className="truncate text-sm text-muted-foreground">{visit.place}</p>}
-        <div className="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1">
-          <StatusBadge status={visit.status} steps={visit.steps} />
-          {earlier ? (
-            <span className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground">
-              <History className="size-3.5" aria-hidden="true" /> Updated later
-            </span>
-          ) : (
-            <span className="inline-flex items-center gap-1 text-xs font-medium text-status-implementation-ink">
-              <CircleCheck className="size-3.5" aria-hidden="true" /> Latest
-            </span>
-          )}
-        </div>
-        <p className="mt-1.5 flex items-center gap-1.5 text-xs text-muted-foreground tabular-nums">
+        <p className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground tabular-nums">
           <TypeIcon type={visit.type} className="size-3.5 shrink-0" />
-          <span className="font-medium text-foreground/80">{formatTimeRange(visit.visitDate, visit.visitEndDate)}</span>
-          {visit.visitEndDate && <span>· {formatDuration(visit.visitDate, visit.visitEndDate)}</span>}
+          {formatTimeRange(visit.visitDate, visit.visitEndDate)}
+          {visit.visitEndDate && <span className="font-normal">· {formatDuration(visit.visitDate, visit.visitEndDate)}</span>}
         </p>
-        {people && (
-          <p className="mt-1 flex items-start gap-1.5 text-xs text-muted-foreground">
-            <UserRound className="mt-px size-3.5 shrink-0" aria-hidden="true" />
-            <span className="line-clamp-2">{people}</span>
+        <p className="mt-1 line-clamp-2 leading-snug font-semibold">{visit.name || `Unnamed ${visit.type}`}</p>
+        {visit.place && visit.place !== visit.name && <p className="truncate text-sm text-muted-foreground">{visit.place}</p>}
+        <div className="mt-2 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+          <StatusBadge status={visit.status} steps={visit.steps} />
+          {people && <span className="min-w-0 truncate text-xs text-muted-foreground">{people}</span>}
+        </div>
+        {earlier && visit.now && (
+          <p className="mt-2 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-muted-foreground">
+            <CornerDownRight className="size-3.5 shrink-0" aria-hidden="true" />
+            Now
+            <StatusBadge status={visit.now.status} className="px-2 py-px text-[11px]" />
+            <span className="tabular-nums">· {formatDate(visit.now.visitDate, "EEE d MMM")}</span>
           </p>
         )}
-        {earlier && visit.now && (
-          <div className="mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-lg border bg-muted/40 px-2.5 py-2 text-xs text-muted-foreground">
-            <span className="font-medium">Now</span>
-            <StatusBadge status={visit.now.status} className="px-2 py-px text-[11px]" />
-            <span className="tabular-nums">
-              {formatDate(visit.now.visitDate, "EEE d MMM")} · {formatTimeRange(visit.now.visitDate, visit.now.visitEndDate)}
-            </span>
-          </div>
-        )}
       </div>
+      <ChevronRight className="mt-0.5 size-4 shrink-0 self-center text-muted-foreground/50 transition-colors group-hover:text-foreground" aria-hidden="true" />
     </button>
   );
 }
