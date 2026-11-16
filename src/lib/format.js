@@ -53,6 +53,45 @@ export const dhakaDateTime = (day, time = "00:00") => new Date(`${day}T${time}:0
 export const toDateInput = (date) => formatDate(date, "yyyy-MM-dd");
 export const toTimeInput = (date) => formatDate(date, "HH:mm");
 
+// ---------------------------------------------------------------------------
+// Visit times: a start, and an optional end later the same day
+// ---------------------------------------------------------------------------
+
+// "10:00 AM"; with an end time "10:00 – 11:30 AM", or "11:00 AM – 1:00 PM" across noon.
+export function formatTimeRange(start, end) {
+  if (!start) return "";
+  const from = formatDate(start, "h:mm a");
+  if (!end) return from;
+  const sameHalf = formatDate(start, "a") === formatDate(end, "a");
+  return `${sameHalf ? formatDate(start, "h:mm") : from} – ${formatDate(end, "h:mm a")}`;
+}
+
+// How long a visit takes: "45 min", "1 hr", "1 hr 30 min". Empty without an end time.
+export function formatDuration(start, end) {
+  if (!start || !end) return "";
+  return formatMinutes(Math.round((new Date(end) - new Date(start)) / 60_000));
+}
+
+// 90 → "1 hr 30 min", 120 → "2 hrs"
+export function formatMinutes(minutes) {
+  if (!(minutes > 0)) return "";
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  return [hours && `${hours} ${hours === 1 ? "hr" : "hrs"}`, rest && `${rest} min`].filter(Boolean).join(" ");
+}
+
+// How far a day is from today: "Today", "Tomorrow", "Yesterday", "In 3 days", "3 days ago".
+// Empty when it is more than two weeks away (the date says enough then). Pass in the current time.
+export function daysAway(date, now) {
+  const days = differenceInCalendarDays(inDhaka(date), inDhaka(now));
+  if (days === 0) return "Today";
+  if (days === 1) return "Tomorrow";
+  if (days === -1) return "Yesterday";
+  if (days > 0 && days <= 14) return `In ${days} days`;
+  if (days < 0 && days >= -14) return `${-days} days ago`;
+  return "";
+}
+
 // "Today", "Tomorrow", "Yesterday", or "Sat 24 Oct". Pass in the current time.
 export function relativeDay(date, now) {
   const days = differenceInCalendarDays(inDhaka(date), inDhaka(now));
@@ -89,7 +128,7 @@ export function timeAgo(date, now = new Date()) {
 // ---------------------------------------------------------------------------
 
 // "17:00" → "5:00 PM"
-function formatTime(time) {
+export function formatTime(time) {
   if (!time) return "";
   const [hours, minutes] = time.split(":").map(Number);
   return `${hours % 12 || 12}:${String(minutes).padStart(2, "0")} ${hours < 12 ? "AM" : "PM"}`;

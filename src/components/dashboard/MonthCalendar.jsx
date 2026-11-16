@@ -12,7 +12,7 @@ import { isEarlierVisit, monthStart, visitKey } from "@/components/dashboard/cal
 import { TypeIcon } from "@/components/shared/common";
 import { Button } from "@/components/ui/button";
 import { STATUSES } from "@/lib/constants";
-import { formatDate } from "@/lib/format";
+import { formatDate, formatTimeRange } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 const WEEKDAYS = ["Sat", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri"]; // the week starts on Saturday in Bangladesh
@@ -242,12 +242,12 @@ function VisitChip({ visit, isPicked, onClick, className }) {
   );
 }
 
-// "11:00 AM · Dr. Tanvir Ahmed · Square Hospital Chambers", and for an earlier stage where the
-// onboarding stands now: "… · Earlier stage, now Ongoing on 10 Nov".
+// "11:00 AM – 12:30 PM · Dr. Tanvir Ahmed · Square Hospital Chambers", and for an earlier stage where
+// the onboarding stands now: "… · Updated later: now Ongoing on 10 Nov".
 function chipTitle(visit, name) {
-  const parts = [formatDate(visit.visitDate, "h:mm a"), name, visit.place !== name && visit.place];
+  const parts = [formatTimeRange(visit.visitDate, visit.visitEndDate), name, visit.place !== name && visit.place];
   if (isEarlierVisit(visit) && visit.now) {
-    parts.push(`Earlier stage, now ${STATUSES[visit.now.status]?.label} on ${formatDate(visit.now.visitDate, "d MMM")}`);
+    parts.push(`Updated later: now ${STATUSES[visit.now.status]?.label} on ${formatDate(visit.now.visitDate, "d MMM")}`);
   }
   return parts.filter(Boolean).join(" · ");
 }

@@ -5,6 +5,9 @@
 //   NumberedField, RequiredLabel   how a field is shown
 //   ChoiceChips, DaysAndHours, TakaInput, StatusChoice   the special inputs
 
+import { Controller } from "react-hook-form";
+
+import { TimeSelect } from "@/components/shared/TimeSelect";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { CONSULTATION_TYPES, DAYS, FIELDS, PAYMENT_METHODS, PHARMACY_TYPES, SLOT_DURATIONS, STATUSES } from "@/lib/constants";
@@ -21,7 +24,7 @@ const YES_NO = [
 // ---------------------------------------------------------------------------
 // The fields of each form, in paper-form order
 // ---------------------------------------------------------------------------
-export function DoctorFields({ register, errors }) {
+export function DoctorFields({ register, control, errors }) {
   const f = FIELDS.doctor;
   return (
     <>
@@ -60,7 +63,7 @@ export function DoctorFields({ register, errors }) {
         </select>
       </NumberedField>
       <NumberedField field={f.available} group wide error={errors.availableDays || errors.availableFrom || errors.availableTo}>
-        <DaysAndHours register={register} />
+        <DaysAndHours register={register} control={control} />
       </NumberedField>
       <NumberedField field={f.firstVisit} id="fees.firstVisit" error={errors.fees?.firstVisit}>
         <TakaInput id="fees.firstVisit" {...register("fees.firstVisit")} />
@@ -78,7 +81,7 @@ export function DoctorFields({ register, errors }) {
   );
 }
 
-export function PharmacyFields({ register, errors }) {
+export function PharmacyFields({ register, control, errors }) {
   const f = FIELDS.pharmacy;
   return (
     <>
@@ -121,7 +124,7 @@ export function PharmacyFields({ register, errors }) {
         <Input id="district" placeholder="e.g. Dhaka" {...register("district")} />
       </NumberedField>
       <NumberedField field={f.available} group wide error={errors.availableDays || errors.availableFrom || errors.availableTo}>
-        <DaysAndHours register={register} />
+        <DaysAndHours register={register} control={control} />
       </NumberedField>
       <NumberedField field={f.homeDelivery} group error={errors.homeDelivery}>
         <ChoiceChips name="homeDelivery" type="radio" options={YES_NO} register={register} />
@@ -188,8 +191,9 @@ function ChoiceChips({ name, options, register, type = "checkbox" }) {
   );
 }
 
-// Field 11: which days, and from–to hours.
-function DaysAndHours({ register }) {
+// Field 11: which days, and from–to hours (the same time picker as the visit; either may be left out).
+// Opening hours can run past midnight, so "to" offers every time, not only those after "from".
+function DaysAndHours({ register, control }) {
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap gap-1.5">
@@ -205,9 +209,21 @@ function DaysAndHours({ register }) {
       </div>
       <div className="flex flex-wrap items-center gap-2 text-sm">
         <span className="text-muted-foreground">From</span>
-        <Input type="time" aria-label="From" className="w-36" {...register("availableFrom")} />
+        <Controller
+          name="availableFrom"
+          control={control}
+          render={({ field }) => (
+            <TimeSelect aria-label="From" className="w-36" value={field.value} onChange={field.onChange} optional noneLabel="Not set" placeholder="Not set" />
+          )}
+        />
         <span className="text-muted-foreground">to</span>
-        <Input type="time" aria-label="To" className="w-36" {...register("availableTo")} />
+        <Controller
+          name="availableTo"
+          control={control}
+          render={({ field }) => (
+            <TimeSelect aria-label="To" className="w-36" value={field.value} onChange={field.onChange} optional noneLabel="Not set" placeholder="Not set" />
+          )}
+        />
       </div>
     </div>
   );

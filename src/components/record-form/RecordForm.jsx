@@ -14,19 +14,20 @@ import { use } from "react";
 import Link from "next/link";
 import { io } from "next/cache";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useForm } from "react-hook-form";
+import { Controller, useForm, useWatch } from "react-hook-form";
 import { LoaderCircle, SearchX } from "lucide-react";
 import { toast } from "sonner";
 
 import { useUser } from "@/components/app-shell/useUser";
 import { DoctorFields, PharmacyFields, RequiredLabel, StatusChoice } from "@/components/record-form/FormFields";
 import { EmptyState, FormField, PageHeader, PageSkeleton } from "@/components/shared/common";
+import { TimeSelect, movedEndTime } from "@/components/shared/TimeSelect";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useRecord, useSaveRecord } from "@/lib/api";
 import { FIELDS, TYPES } from "@/lib/constants";
-import { dashboardLink, dayKey, dhakaDateTime, emailSummary, formatDate, formatPhone, toDateInput, toTimeInput } from "@/lib/format";
+import { dashboardLink, dayKey, dhakaDateTime, emailSummary, formatDate, formatPhone, formatTimeRange, toDateInput, toTimeInput } from "@/lib/format";
 
 // ---------------------------------------------------------------------------
 // The two pages
@@ -60,11 +61,15 @@ function RecordForm({ type, record, visitDay }) {
   const isAdmin = signedInUser?.role === "admin";
   const {
     register,
+    control,
     handleSubmit,
     reset,
     setError,
+    setValue,
+    getValues,
     formState: { errors, isSubmitting },
   } = useForm({ defaultValues: startingValues(type, record, visitDay, isAdmin) });
+  const visitTime = useWatch({ control, name: "visitTime" }); // the end time is picked after it
 
   const { path, formTitle, label } = TYPES[type];
   const isEditing = Boolean(record);
@@ -84,7 +89,7 @@ function RecordForm({ type, record, visitDay }) {
         router.push(`${path}/${saved.id}`);
         return;
       }
-      toast.success(`${saved.name || label} is on the calendar for ${formatDate(saved.visitDate, "EEE d MMM, h:mm a")}.`);
+      toast.success(`${saved.name || label} is on the calendar for ${formatDate(saved.visitDate, "EEE d MMM")}, ${formatTimeRange(saved.visitDate, saved.visitEndDate)}.`);
       // This page stays alive in the background; empty it so the next new form starts blank.
       reset(startingValues(type));
       router.push(dashboardLink(saved));
@@ -119,7 +124,11 @@ function RecordForm({ type, record, visitDay }) {
         </div>
         <div className="space-y-7 p-5 sm:p-6">
           <div className="grid grid-cols-1 gap-x-8 gap-y-5 md:grid-cols-2">
-            {type === "doctor" ? <DoctorFields register={register} errors={errors} /> : <PharmacyFields register={register} errors={errors} />}
+            {type === "doctor" ? (
+              <DoctorFields register={register} control={control} errors={errors} />
+            ) : (
+              <PharmacyFields register={register} control={control} errors={errors} />
+            )}
           </div>
         </div>
       </section>
@@ -132,9 +141,51 @@ function RecordForm({ type, record, visitDay }) {
           <FormField id="visitDay" label="Visit date" error={errors.visitDay}>
             <Input id="visitDay" type="date" min={earliestDay} {...register("visitDay")} />
           </FormField>
-          <FormField id="visitTime" label="Time" error={errors.visitTime}>
-            <Input id="visitTime" type="time" {...register("visitTime")} />
-          </FormField>
+          {/* The start, and when the visit ends (optional): only later times, with how long it takes. */}
+          <div className="grid grid-cols-2 gap-3">
+            <FormField id="visitTime" label="Start time" error={errors.visitTime}>
+              <Controller
+                name="visitTime"
+                control={control}
+                render={({ field }) => (
+                  <TimeSelect
+                    id="visitTime"
+                    value={field.value}
+                    onChange={(next) => {
+                      // the end time moves along, so the visit keeps its length
+                      setValue("visitEndTime", movedEndTime(field.value, getValues("visitEndTime"), next));
+                      field.onChange(next);
+                    }}
+                  />
+                )}
+              />
+            </FormField>
+            <FormField
+              id="visitEndTime"
+              label={
+                <>
+                  End time <span className="font-normal text-muted-foreground">(optional)</span>
+                </>
+              }
+              error={errors.visitEndTime}
+            >
+              <Controller
+                name="visitEndTime"
+                control={control}
+                render={({ field }) => (
+                  <TimeSelect
+                    id="visitEndTime"
+                    value={field.value}
+                    onChange={field.onChange}
+                    after={visitTime}
+                    optional
+                    placeholder="No end time"
+                    invalid={Boolean(errors.visitEndTime)}
+                  />
+                )}
+              />
+            </FormField>
+          </div>
           <StatusChoice register={register} />
           <FormField id="notes" label="Notes" hint="Anything the team should know, e.g. what was agreed." className="sm:col-span-2">
             <Textarea id="notes" rows={3} {...register("notes")} />
@@ -181,6 +232,7 @@ function startingValues(type, record, visitDay, canPlanPast = false) {
     availableTo: text("availableTo"),
     visitDay: visitDate,
     visitTime: record ? toTimeInput(record.visitDate) : "10:00",
+    visitEndTime: record?.visitEndDate ? toTimeInput(record.visitEndDate) : "", // "" = no end time
     status: record?.status ?? "account_creation", // a new onboarding starts with account creation
     notes: text("notes"),
   };
@@ -213,9 +265,11 @@ function startingValues(type, record, visitDay, canPlanPast = false) {
   };
 }
 
-// The form keeps the visit as a day and a time; the API wants one moment (visitDate).
-function toApiValues(type, { visitDay, visitTime, homeDelivery, drugLicenseIssueDate, drugLicenseExpireDate, ...fields }) {
-  const values = { ...fields, visitDate: dhakaDateTime(visitDay || dayKey(new Date()), visitTime || "10:00") };
+// The form keeps the visit as a day, a start time and an end time; the API wants moments
+// (visitDate, and visitEndDate or null).
+function toApiValues(type, { visitDay, visitTime, visitEndTime, homeDelivery, drugLicenseIssueDate, drugLicenseExpireDate, ...fields }) {
+  const day = visitDay || dayKey(new Date());
+  const values = { ...fields, visitDate: dhakaDateTime(day, visitTime || "10:00"), visitEndDate: visitEndTime ? dhakaDateTime(day, visitEndTime) : null };
   if (type === "pharmacy") {
     values.homeDelivery = booleanFromYesNo(homeDelivery);
     values.drugLicenseIssueDate = drugLicenseIssueDate ? new Date(drugLicenseIssueDate).toISOString() : null;
@@ -236,12 +290,14 @@ function booleanFromYesNo(value) {
   return null;
 }
 
-// Puts the API's messages next to the right boxes. The API calls the visit "visitDate";
-// the form shows it as the "visitDay" box. Anything else becomes a toast.
+// Puts the API's messages next to the right boxes. The API calls the visit "visitDate" and its end
+// "visitEndDate"; the form shows them as the "visitDay" and "visitEndTime" boxes. Anything else becomes a toast.
+const FORM_FIELD_FOR = { visitDate: "visitDay", visitEndDate: "visitEndTime" };
+
 function showApiErrors(error, setError) {
   const fields = Object.entries(error.fields ?? {});
   fields.forEach(([field, message], index) => {
-    const formField = field === "visitDate" ? "visitDay" : field;
+    const formField = FORM_FIELD_FOR[field] ?? field;
     setError(formField, { type: "server", message }, { shouldFocus: index === 0 });
   });
   if (fields.length === 0) toast.error(error.message);

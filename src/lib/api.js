@@ -65,11 +65,13 @@ function queryString(params) {
 // One page of the list → { data: records, meta: { counts, page, limit, total, pages } }.
 // `params` are the API's filters: search, status, assignee, createdBy, from, to, sort, page, limit.
 // While a new page or filter loads, the previous answer stays on screen (no flash of empty list).
-export function useRecords(type, params = {}) {
+// `enabled` is false while the list is still measuring how many rows fit (see usePageSize).
+export function useRecords(type, params = {}, { enabled = true } = {}) {
   return useQuery({
     queryKey: ["records", type, params],
     queryFn: () => api(`${pathFor(type)}?${queryString(params)}`),
     placeholderData: keepPreviousData,
+    enabled,
   });
 }
 
@@ -137,11 +139,12 @@ export const useAssign = (type) =>
 
 // One page of the call log → { data: calls, meta: { counts: { all, open, resolved }, page, limit, total, pages } }.
 // `params`: search, status, type, createdBy, from, to, sort, page, limit.
-export function useSupportCalls(params = {}) {
+export function useSupportCalls(params = {}, { enabled = true } = {}) {
   return useQuery({
     queryKey: ["support-calls", params],
     queryFn: () => api(`/support-calls?${queryString(params)}`),
     placeholderData: keepPreviousData,
+    enabled,
   });
 }
 

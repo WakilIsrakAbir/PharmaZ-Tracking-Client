@@ -12,12 +12,13 @@ import { ChevronDown, ChevronUp, ListChecks, LoaderCircle, Pencil, PencilLine, P
 import { toast } from "sonner";
 
 import { useUser } from "@/components/app-shell/useUser";
+import { TimeSelect, movedEndTime } from "@/components/shared/TimeSelect";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useUpdateStatus } from "@/lib/api";
 import { STATUSES } from "@/lib/constants";
-import { countSteps, dayKey, dhakaDateTime, formatDate, timeAgo, toDateInput, toTimeInput } from "@/lib/format";
+import { countSteps, dayKey, dhakaDateTime, emailSummary, formatDate, formatTimeRange, timeAgo, toDateInput, toTimeInput } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 // A white box with an optional title. `action` (a button) sits on the right of the title.
@@ -76,22 +77,35 @@ function StatusUpdate({ record }) {
   const [status, setStatus] = useState(record.status);
   const [day, setDay] = useState(toDateInput(record.visitDate));
   const [time, setTime] = useState(toTimeInput(record.visitDate));
+  const [endTime, setEndTime] = useState(record.visitEndDate ? toTimeInput(record.visitEndDate) : ""); // "" = no end time
   const [note, setNote] = useState("");
   const [steps, setSteps] = useState(savedSteps);
 
   const visitDate = dhakaDateTime(day, time || "00:00");
+  const visitEndDate = endTime ? dhakaDateTime(day, endTime) : null;
   const statusChanged = status !== record.status;
   const dateChanged = visitDate !== new Date(record.visitDate).toISOString();
+  const endChanged = visitEndDate !== (record.visitEndDate ? new Date(record.visitEndDate).toISOString() : null);
   const stepsChanged = JSON.stringify(stepsToSave(steps)) !== JSON.stringify(stepsToSave(savedSteps));
   const hasNote = note.trim() !== "";
-  const canSave = Boolean(day) && (statusChanged || dateChanged || stepsChanged || hasNote) && !updateStatus.isPending;
+  const canSave = Boolean(day) && (statusChanged || dateChanged || endChanged || stepsChanged || hasNote) && !updateStatus.isPending;
+
+  // A new start time takes the end time along, so the visit keeps its length.
+  function changeStartTime(next) {
+    setEndTime(movedEndTime(time, endTime, next));
+    setTime(next);
+  }
 
   async function save() {
-    const change = { id: record.id, status, visitDate, note: note.trim() };
+    const change = { id: record.id, status, visitDate, visitEndDate, note: note.trim() };
     if (stepsChanged) change.implementationSteps = stepsToSave(steps);
     try {
-      await updateStatus.mutateAsync(change);
-      toast.success(statusChanged ? `${record.name || "Form"} is now in ${STATUSES[status].label}.` : "Update saved.");
+      // A new status or visit time is emailed to everyone assigned; say who got it, and in red who didn't.
+      const { meta } = await updateStatus.mutateAsync(change);
+      const saved = statusChanged ? `${record.name || "Form"} is now in ${STATUSES[status].label}.` : "Update saved.";
+      const email = emailSummary(saved, meta?.email);
+      if (email.problem) toast.error(email.text, { duration: 10_000 });
+      else toast.success(email.text);
     } catch (error) {
       toast.error(error.message);
     }
@@ -103,9 +117,27 @@ function StatusUpdate({ record }) {
         <PencilLine className="size-3.5" aria-hidden="true" /> Update after each visit
       </p>
       <StatusPicker value={status} onChange={setStatus} />
-      <div className="grid grid-cols-2 gap-2">
-        <Input type="date" aria-label="Visit date" min={earliestDay} className="bg-background" value={day} onChange={(event) => setDay(event.target.value)} />
-        <Input type="time" aria-label="Visit time" className="bg-background" value={time} onChange={(event) => setTime(event.target.value)} />
+      {/* When: the day, then the start and (optional) end time side by side. */}
+      <div className="grid grid-cols-2 gap-x-2 gap-y-1.5">
+        <label htmlFor={`visit-day-${record.id}`} className="col-span-2 text-xs font-medium text-muted-foreground">
+          Visit date
+        </label>
+        <Input
+          id={`visit-day-${record.id}`}
+          type="date"
+          min={earliestDay}
+          className="col-span-2 bg-background"
+          value={day}
+          onChange={(event) => setDay(event.target.value)}
+        />
+        <label htmlFor={`visit-start-${record.id}`} className="mt-1 text-xs font-medium text-muted-foreground">
+          Start
+        </label>
+        <label htmlFor={`visit-end-${record.id}`} className="mt-1 text-xs font-medium text-muted-foreground">
+          End <span className="font-normal">(optional)</span>
+        </label>
+        <TimeSelect id={`visit-start-${record.id}`} value={time} onChange={changeStartTime} />
+        <TimeSelect id={`visit-end-${record.id}`} value={endTime} onChange={setEndTime} after={time} optional placeholder="No end time" />
       </div>
       {status === "implementation" && <ImplementationSteps steps={steps} onChange={setSteps} />}
       <Textarea
@@ -271,7 +303,9 @@ function History({ history }) {
             {!isLastShown && <span className="absolute top-4 -bottom-5 left-[4.5px] w-px bg-border" aria-hidden="true" />}
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
               <span className="font-semibold">{STATUSES[entry.status]?.label}</span>
-              <span className="text-muted-foreground">· visit {formatDate(entry.visitDate, "d MMM, h:mm a")}</span>
+              <span className="text-muted-foreground tabular-nums">
+                · visit {formatDate(entry.visitDate, "d MMM")}, {formatTimeRange(entry.visitDate, entry.visitEndDate)}
+              </span>
             </div>
             {entry.steps && (
               <p className="mt-0.5 flex items-center gap-1 text-xs font-medium text-status-implementation-ink">

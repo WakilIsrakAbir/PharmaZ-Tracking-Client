@@ -8,7 +8,8 @@ import { useDeferredValue, useEffect, useState } from "react";
 import { FilterX, Search, ShieldCheck, TriangleAlert, UserPlus, Users } from "lucide-react";
 
 import { useUser } from "@/components/app-shell/useUser";
-import { Avatar, EmptyState, PAGE_SIZES, PageHeader, Pagination, Select } from "@/components/shared/common";
+import { Avatar, EmptyState, PageHeader, Pagination, Select } from "@/components/shared/common";
+import { usePageSize } from "@/components/shared/usePageSize";
 import { TeammateDialog, UserActions } from "@/components/team/TeamDialogs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -21,7 +22,6 @@ import { formatPhone, timeAgo } from "@/lib/format";
 import { useUrlParams } from "@/lib/useUrlParams";
 import { cn } from "@/lib/utils";
 
-const DEFAULT_LIMIT = 20;
 
 // The order of the list. The empty value is the API's own default.
 const SORTS = [
@@ -43,7 +43,8 @@ export function TeamPage() {
   const role = params.get("role") ?? "";
   const sort = params.get("sort") ?? "";
   const page = Math.max(1, Number(params.get("page")) || 1);
-  const limit = PAGE_SIZES.includes(Number(params.get("limit"))) ? Number(params.get("limit")) : DEFAULT_LIMIT;
+  // As many rows as fit on the screen (no scrolling), unless a size was picked under Per page.
+  const { rowsRef, fit, auto, limit } = usePageSize(params);
 
   // Typing shows at once; the list follows a moment later, so not every keystroke asks the API.
   const [search, setSearch] = useState(params.get("q") ?? "");
@@ -63,6 +64,7 @@ export function TeamPage() {
   function goToPage(next) {
     setParams({ page: next > 1 ? next : null });
     window.scrollTo({ top: 0, behavior: "smooth" });
+    rowsRef.current?.scrollTo({ top: 0 }); // on large screens the rows scroll inside the card
   }
 
   const { data, isPending, isError, isFetching, refetch } = useUsers({
@@ -72,7 +74,7 @@ export function TeamPage() {
     sort,
     page,
     limit,
-  });
+  }, { enabled: limit !== null });
   const users = data?.data ?? [];
   const meta = data?.meta;
   const counts = meta?.counts;
@@ -86,7 +88,9 @@ export function TeamPage() {
     // The page reaches the very bottom of the screen (it takes over the page's bottom padding, under
     // the top bar on phones), and the list's card fills it, so the page bar touches the bottom edge
     // even when the team is small.
-    <div className="-mb-6 flex min-h-[calc(100dvh-5rem)] flex-col gap-6 lg:-mb-8 lg:min-h-[calc(100dvh-2rem)]">
+    // On large screens the page is exactly the screen's height: the title, tabs, filters and column
+    // titles stay put and only the rows scroll, inside the card.
+    <div className="-mb-6 flex min-h-[calc(100dvh-5rem)] flex-col gap-6 lg:-mb-8 lg:h-[calc(100dvh-2rem)] lg:min-h-0">
       <PageHeader
         title="Team"
         description="Everyone who can sign in to the tracker. Only admins can add people or change their access."
@@ -98,7 +102,7 @@ export function TeamPage() {
       />
 
       {/* No bottom edge: the card ends at the screen's edge, with the page bar as its last row. */}
-      <section className="flex flex-1 flex-col overflow-clip rounded-t-xl border border-b-0 bg-card">
+      <section className="flex flex-1 flex-col overflow-clip rounded-t-xl border border-b-0 bg-card lg:min-h-0">
         {/* The Active / Deactivated tabs and the search box */}
         <div className="flex flex-col gap-3 border-b p-3 sm:flex-row sm:items-center sm:justify-between">
           <Tabs value={tab} onValueChange={(value) => change({ status: value === "active" ? null : value })}>
@@ -158,7 +162,7 @@ export function TeamPage() {
         </div>
 
         {/* The rows take the room that is left, so the page bar under them stays at the bottom. */}
-        <div className="flex-1">
+        <div ref={rowsRef} className="flex-1 lg:min-h-0 lg:overflow-y-auto">
           {isPending && <RowsSkeleton />}
 
           {isError && (
@@ -180,7 +184,7 @@ export function TeamPage() {
           {data && users.length > 0 && (
             // While another page or filter loads, the rows on screen fade a little instead of vanishing.
             <ul className={cn("divide-y transition-opacity", isFetching && "opacity-60")} aria-busy={isFetching}>
-              <li className={cn("hidden gap-4 px-4 py-2 text-xs font-semibold text-muted-foreground md:grid", COLUMNS)}>
+              <li className={cn("hidden gap-4 bg-card px-4 py-2 text-xs font-semibold text-muted-foreground md:grid lg:sticky lg:top-0 lg:z-10", COLUMNS)}>
                 <span>Person</span>
                 <span>Role</span>
                 <span>Phone</span>
@@ -194,7 +198,7 @@ export function TeamPage() {
             </ul>
           )}
         </div>
-        {!isError && <Pagination meta={meta} onPage={goToPage} onLimit={(next) => change({ limit: next === DEFAULT_LIMIT ? null : next })} />}
+        {!isError && <Pagination meta={meta} onPage={goToPage} onLimit={(next) => change({ limit: next })} fit={fit} auto={auto} />}
       </section>
 
       <TeammateDialog open={adding} onOpenChange={setAdding} />

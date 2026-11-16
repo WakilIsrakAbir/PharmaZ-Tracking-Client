@@ -11,7 +11,8 @@ import { addDays } from "date-fns";
 import { ChevronRight, FilterX, Headset, PhoneIncoming, Search, TriangleAlert } from "lucide-react";
 
 import { useUser } from "@/components/app-shell/useUser";
-import { Avatar, CallStatusBadge, EmptyState, PAGE_SIZES, PageHeader, Pagination, Select, TypeIcon } from "@/components/shared/common";
+import { Avatar, CallStatusBadge, EmptyState, PageHeader, Pagination, Select, TypeIcon } from "@/components/shared/common";
+import { usePageSize } from "@/components/shared/usePageSize";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -21,7 +22,6 @@ import { dayKey, dhakaDateTime, formatDate, formatPhone, relativeDay } from "@/l
 import { useUrlParams } from "@/lib/useUrlParams";
 import { cn } from "@/lib/utils";
 
-const DEFAULT_LIMIT = 20;
 
 // The order of the log. The empty value is the API's own default.
 const SORTS = [
@@ -51,7 +51,8 @@ export function CallLog() {
   const when = params.get("when") ?? "";
   const sort = params.get("sort") ?? "";
   const page = Math.max(1, Number(params.get("page")) || 1);
-  const limit = PAGE_SIZES.includes(Number(params.get("limit"))) ? Number(params.get("limit")) : DEFAULT_LIMIT;
+  // As many rows as fit on the screen (no scrolling), unless a size was picked under Per page.
+  const { rowsRef, fit, auto, limit } = usePageSize(params);
 
   // Typing shows at once; the list follows a moment later, so not every keystroke asks the API.
   const [search, setSearch] = useState(params.get("q") ?? "");
@@ -71,6 +72,7 @@ export function CallLog() {
   function goToPage(next) {
     setParams({ page: next > 1 ? next : null });
     window.scrollTo({ top: 0, behavior: "smooth" });
+    rowsRef.current?.scrollTo({ top: 0 }); // on large screens the rows scroll inside the card
   }
 
   const { data, isPending, isError, isFetching, refetch } = useSupportCalls({
@@ -82,7 +84,7 @@ export function CallLog() {
     sort,
     page,
     limit,
-  });
+  }, { enabled: limit !== null });
   const calls = data?.data ?? [];
   const meta = data?.meta;
   const counts = meta?.counts;
@@ -103,7 +105,9 @@ export function CallLog() {
 
   return (
     // The page reaches the very bottom of the screen and the card fills it, so the page bar touches the bottom edge.
-    <div className="-mb-6 flex min-h-[calc(100dvh-5rem)] flex-col gap-6 lg:-mb-8 lg:min-h-[calc(100dvh-2rem)]">
+    // On large screens the page is exactly the screen's height: the title, tabs, filters and column
+    // titles stay put and only the rows scroll, inside the card.
+    <div className="-mb-6 flex min-h-[calc(100dvh-5rem)] flex-col gap-6 lg:-mb-8 lg:h-[calc(100dvh-2rem)] lg:min-h-0">
       <PageHeader
         title="Call log"
         description={isAdmin ? "Every support call the team has logged, and whether it is solved." : "The calls you logged, and whether each one is solved."}
@@ -116,7 +120,7 @@ export function CallLog() {
         }
       />
 
-      <section className="flex flex-1 flex-col overflow-clip rounded-t-xl border border-b-0 bg-card">
+      <section className="flex flex-1 flex-col overflow-clip rounded-t-xl border border-b-0 bg-card lg:min-h-0">
         {/* The Open / Resolved tabs and the search box */}
         <div className="flex flex-col gap-3 border-b p-3 lg:flex-row lg:items-center lg:justify-between">
           <div role="tablist" aria-label="Status" className="flex flex-wrap gap-1">
@@ -202,7 +206,7 @@ export function CallLog() {
         </div>
 
         {/* The rows take the room that is left, so the page bar under them stays at the bottom. */}
-        <div className="flex-1">
+        <div ref={rowsRef} className="flex-1 lg:min-h-0 lg:overflow-y-auto">
           {isPending ? (
             <RowsSkeleton />
           ) : isError ? (
@@ -240,7 +244,7 @@ export function CallLog() {
           ) : (
             // While another page or filter loads, the rows on screen fade a little instead of vanishing.
             <ul className={cn("divide-y transition-opacity", isFetching && "opacity-60")} aria-busy={isFetching}>
-              <li className={cn("hidden gap-4 px-4 py-2 text-xs font-semibold text-muted-foreground md:grid", columns)}>
+              <li className={cn("hidden gap-4 bg-card px-4 py-2 text-xs font-semibold text-muted-foreground md:grid lg:sticky lg:top-0 lg:z-10", columns)}>
                 <span>Caller</span>
                 <span>Problem</span>
                 {isAdmin && <span>Logged by</span>}
@@ -254,7 +258,7 @@ export function CallLog() {
             </ul>
           )}
         </div>
-        {!isError && <Pagination meta={meta} onPage={goToPage} onLimit={(next) => change({ limit: next === DEFAULT_LIMIT ? null : next })} />}
+        {!isError && <Pagination meta={meta} onPage={goToPage} onLimit={(next) => change({ limit: next })} fit={fit} auto={auto} />}
       </section>
     </div>
   );

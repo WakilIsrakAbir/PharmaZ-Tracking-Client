@@ -5,23 +5,23 @@
 // were assigned to. The tabs, filters and page live in the address (?status=setup&page=2), so a
 // refresh or the back button returns to the same view, and it can be shared.
 
-import { useDeferredValue, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { addDays } from "date-fns";
-import { ChevronRight, FilterX, Pill, Plus, Search, Stethoscope, TriangleAlert } from "lucide-react";
+import { ChevronRight, FilterX, Pill, Plus, Search, Stethoscope, TriangleAlert, X } from "lucide-react";
 
 import { useUser } from "@/components/app-shell/useUser";
-import { Avatar, EmptyState, PAGE_SIZES, PageHeader, Pagination, Select, StatusBadge, TypeIcon } from "@/components/shared/common";
+import { Avatar, EmptyState, PageHeader, Pagination, Select, StatusBadge, TypeIcon } from "@/components/shared/common";
+import { usePageSize } from "@/components/shared/usePageSize";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useRecords, useUsers } from "@/lib/api";
 import { STATUSES, TYPES } from "@/lib/constants";
-import { countSteps, dayKey, dhakaDateTime, formatDate, formatPhone, peopleLine, relativeDay } from "@/lib/format";
+import { countSteps, dayKey, dhakaDateTime, formatPhone, formatTimeRange, peopleLine, relativeDay } from "@/lib/format";
+import { useDebouncedValue } from "@/lib/useDebouncedValue";
 import { useUrlParams } from "@/lib/useUrlParams";
 import { cn } from "@/lib/utils";
-
-const DEFAULT_LIMIT = 20;
 
 // The order of the list. The empty value is the API's own default.
 const SORTS = [
@@ -52,11 +52,14 @@ export function RecordList({ type }) {
   const when = params.get("when") ?? "";
   const sort = params.get("sort") ?? "";
   const page = Math.max(1, Number(params.get("page")) || 1);
-  const limit = PAGE_SIZES.includes(Number(params.get("limit"))) ? Number(params.get("limit")) : DEFAULT_LIMIT;
+  // As many rows as fit on the screen (no scrolling), unless a size was picked under Per page.
+  const { rowsRef, fit, auto, limit } = usePageSize(params);
 
-  // Typing shows at once; the list follows a moment later, so not every keystroke asks the API.
+  // Typing shows at once; the list follows when typing pauses, so not every key asks the API.
+  // Every word must match (in any order), and the words are marked in the names.
   const [search, setSearch] = useState(params.get("q") ?? "");
-  const query = useDeferredValue(search.trim());
+  const query = useDebouncedValue(search.trim(), 300);
+  const words = query.split(/\s+/).filter(Boolean);
   const filtering = Boolean(query || assignee || createdBy || when); // something besides the tabs narrows the list
 
   // Changing a filter goes back to the first page.
@@ -72,6 +75,7 @@ export function RecordList({ type }) {
   function goToPage(next) {
     setParams({ page: next > 1 ? next : null });
     window.scrollTo({ top: 0, behavior: "smooth" });
+    rowsRef.current?.scrollTo({ top: 0 }); // on large screens the rows scroll inside the card
   }
 
   const { data, isPending, isError, isFetching, refetch } = useRecords(type, {
@@ -83,7 +87,7 @@ export function RecordList({ type }) {
     sort,
     page,
     limit,
-  });
+  }, { enabled: limit !== null });
   const records = data?.data ?? [];
   const meta = data?.meta;
   const counts = meta?.counts;
@@ -106,7 +110,9 @@ export function RecordList({ type }) {
     // The page reaches the very bottom of the screen (it takes over the page's bottom padding, under
     // the top bar on phones), and the list's card fills it, so the page bar touches the bottom edge
     // even when the list is short.
-    <div className="-mb-6 flex min-h-[calc(100dvh-5rem)] flex-col gap-6 lg:-mb-8 lg:min-h-[calc(100dvh-2rem)]">
+    // On large screens the page is exactly the screen's height: the title, tabs, filters and column
+    // titles stay put and only the rows scroll, inside the card.
+    <div className="-mb-6 flex min-h-[calc(100dvh-5rem)] flex-col gap-6 lg:-mb-8 lg:h-[calc(100dvh-2rem)] lg:min-h-0">
       <PageHeader
         title={plural}
         description={
@@ -124,7 +130,7 @@ export function RecordList({ type }) {
       />
 
       {/* No bottom edge: the card ends at the screen's edge, with the page bar as its last row. */}
-      <section className="flex flex-1 flex-col overflow-clip rounded-t-xl border border-b-0 bg-card">
+      <section className="flex flex-1 flex-col overflow-clip rounded-t-xl border border-b-0 bg-card lg:min-h-0">
         {/* The status tabs and the search box */}
         <div className="flex flex-col gap-3 border-b p-3 lg:flex-row lg:items-center lg:justify-between">
           <div role="tablist" aria-label="Status" className="flex flex-wrap gap-1">
@@ -146,19 +152,48 @@ export function RecordList({ type }) {
               </button>
             ))}
           </div>
-          <div className="relative lg:w-80">
+          {/* Search by name (and phone, …). While searching it says how many were found, with ✕ to clear. */}
+          <div role="search" className="relative lg:w-80">
             <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
             <Input
-              type="search"
+              type="text"
+              inputMode="search"
+              enterKeyHint="search"
+              autoComplete="off"
               value={search}
               onChange={(event) => {
                 setSearch(event.target.value);
                 change({ q: event.target.value.trim() });
               }}
-              placeholder={type === "doctor" ? "Search name, phone, BMDC, chamber" : "Search name, phone, owner, area"}
-              aria-label={`Search ${plural.toLowerCase()}`}
-              className="pl-9"
+              onKeyDown={(event) => {
+                if (event.key !== "Escape" || !search) return;
+                setSearch("");
+                change({ q: null });
+              }}
+              placeholder={type === "doctor" ? "Search by name, phone, BMDC, chamber" : "Search by name, phone, owner, area"}
+              aria-label={`Search ${plural.toLowerCase()} by name`}
+              className={cn("pl-9", search && "pr-28")}
             />
+            {search && (
+              <div className="absolute inset-y-0 right-1.5 flex items-center gap-1">
+                {query && meta && !isFetching && (
+                  <span className="text-xs whitespace-nowrap text-muted-foreground tabular-nums" aria-live="polite">
+                    {meta.total} found
+                  </span>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearch("");
+                    change({ q: null });
+                  }}
+                  aria-label="Clear the search"
+                  className="rounded-md p-1 text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
+                >
+                  <X className="size-4" />
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
@@ -199,7 +234,7 @@ export function RecordList({ type }) {
         </div>
 
         {/* The rows take the room that is left, so the page bar under them stays at the bottom. */}
-        <div className="flex-1">
+        <div ref={rowsRef} className="flex-1 lg:min-h-0 lg:overflow-y-auto">
           {isPending ? (
             <RowsSkeleton />
           ) : isError ? (
@@ -241,7 +276,7 @@ export function RecordList({ type }) {
           ) : (
             // While another page or filter loads, the rows on screen fade a little instead of vanishing.
             <ul className={cn("divide-y transition-opacity", isFetching && "opacity-60")} aria-busy={isFetching}>
-              <li className={cn("hidden gap-4 px-4 py-2 text-xs font-semibold text-muted-foreground md:grid", COLUMNS)}>
+              <li className={cn("hidden gap-4 bg-card px-4 py-2 text-xs font-semibold text-muted-foreground md:grid lg:sticky lg:top-0 lg:z-10", COLUMNS)}>
                 <span>{label}</span>
                 <span>Location</span>
                 <span>Assigned to</span>
@@ -250,12 +285,12 @@ export function RecordList({ type }) {
                 <span />
               </li>
               {records.map((record) => (
-                <RecordRow key={record.id} record={record} path={path} showSubmitter={isAdmin} />
+                <RecordRow key={record.id} record={record} path={path} showSubmitter={isAdmin} words={words} />
               ))}
             </ul>
           )}
         </div>
-        {!isError && <Pagination meta={meta} onPage={goToPage} onLimit={(next) => change({ limit: next === DEFAULT_LIMIT ? null : next })} />}
+        {!isError && <Pagination meta={meta} onPage={goToPage} onLimit={(next) => change({ limit: next })} fit={fit} auto={auto} />}
       </section>
     </div>
   );
@@ -264,7 +299,7 @@ export function RecordList({ type }) {
 // The columns of the list on large screens: who, where, who is assigned, when, status, and the arrow.
 const COLUMNS = "md:grid-cols-[minmax(0,2fr)_minmax(0,1.4fr)_minmax(0,1.4fr)_10rem_9rem_1.5rem]";
 
-function RecordRow({ record, path, showSubmitter }) {
+function RecordRow({ record, path, showSubmitter, words }) {
   const people = peopleLine(record, { showSubmitter, showAssigned: false }); // the assigned have their own column
   const place = record.type === "doctor" ? record.chamberName || record.address || "—" : [record.area, record.district].filter(Boolean).join(", ") || record.address || "—";
   return (
@@ -277,7 +312,9 @@ function RecordRow({ record, path, showSubmitter }) {
           <Avatar name={record.name || "?"} className="size-10" />
           <div className="min-w-0">
             <div className="flex items-center gap-1.5">
-              <p className="truncate font-semibold">{record.name || `Unnamed ${record.type}`}</p>
+              <p className="truncate font-semibold">
+                <Marked text={record.name || `Unnamed ${record.type}`} words={words} />
+              </p>
               {record.type === "pharmacy" && record.pharmacyType && (
                 <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[0.65rem] font-medium uppercase text-muted-foreground">
                   {record.pharmacyType === "chain" ? "Chain" : "Single"}
@@ -299,7 +336,7 @@ function RecordRow({ record, path, showSubmitter }) {
         </div>
         <p className="col-span-2 row-start-3 text-sm md:col-span-1 md:row-start-auto">
           <span className="font-medium">{relativeDay(record.visitDate, new Date())}</span>
-          <span className="text-muted-foreground"> · {formatDate(record.visitDate, "h:mm a")}</span>
+          <span className="text-muted-foreground tabular-nums"> · {formatTimeRange(record.visitDate, record.visitEndDate)}</span>
         </p>
         <div className="col-start-2 row-start-1 md:col-start-auto md:row-start-auto">
           <StatusBadge status={record.status} steps={countSteps(record.implementationSteps)} />
@@ -307,6 +344,22 @@ function RecordRow({ record, path, showSubmitter }) {
         <ChevronRight className="hidden size-4 text-muted-foreground md:block" aria-hidden="true" />
       </Link>
     </li>
+  );
+}
+
+// A name with the search words marked: "Dr. [Tanvir] Ahmed". Any case, every place a word appears.
+function Marked({ text, words }) {
+  if (!words.length) return text;
+  const pattern = new RegExp(`(${words.map((word) => word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})`, "gi");
+  // split() with one group in the pattern puts the matches at the odd places.
+  return text.split(pattern).map((part, index) =>
+    index % 2 === 1 ? (
+      <mark key={index} className="rounded-sm bg-status-setup-soft px-0.5 text-inherit">
+        {part}
+      </mark>
+    ) : (
+      part
+    ),
   );
 }
 

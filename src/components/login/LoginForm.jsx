@@ -6,7 +6,7 @@
 
 import { useState } from "react";
 import { useForm } from "react-hook-form";
-import { ArrowRight, LoaderCircle } from "lucide-react";
+import { ArrowRight, LoaderCircle, LockKeyhole, Mail } from "lucide-react";
 
 import { FormField, PasswordInput, fieldProps, passwordRules, showServerErrors } from "@/components/shared/common";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -56,10 +56,10 @@ export function LoginForm() {
   return (
     <div>
       <h1 className="text-2xl font-semibold tracking-tight">Welcome back</h1>
-      <p className="mt-1.5 text-muted-foreground">Sign in to fill in forms and see the calendar.</p>
+      <p className="mt-1 text-sm text-muted-foreground">Sign in to continue.</p>
 
       {/* method="post" keeps the password out of the address bar if the form is sent before the page has loaded. */}
-      <form method="post" onSubmit={handleSubmit(onSubmit)} noValidate className="mt-8 space-y-5">
+      <form method="post" onSubmit={handleSubmit(onSubmit)} noValidate className="mt-6 space-y-4">
         {problem && (
           <Alert variant="destructive">
             <AlertDescription>{problem}</AlertDescription>
@@ -67,18 +67,29 @@ export function LoginForm() {
         )}
 
         <FormField id="email" label="Email" error={errors.email}>
-          <Input
-            type="email"
-            autoComplete="email"
-            inputMode="email"
-            placeholder="you@example.com"
-            {...fieldProps("email", errors.email)}
-            {...register("email", { required: "Please enter your email." })}
-          />
+          <WithIcon icon={Mail}>
+            <Input
+              type="email"
+              autoComplete="email"
+              inputMode="email"
+              placeholder="you@example.com"
+              className={INPUT_WITH_ICON}
+              {...fieldProps("email", errors.email)}
+              {...register("email", { required: "Please enter your email." })}
+            />
+          </WithIcon>
         </FormField>
 
         <FormField id="password" label="Password" error={errors.password}>
-          <PasswordInput autoComplete="current-password" {...fieldProps("password", errors.password)} {...register("password", { required: "Please enter your password." })} />
+          <WithIcon icon={LockKeyhole}>
+            <PasswordInput
+              autoComplete="current-password"
+              placeholder="Your password"
+              className={INPUT_WITH_ICON}
+              {...fieldProps("password", errors.password)}
+              {...register("password", { required: "Please enter your password." })}
+            />
+          </WithIcon>
         </FormField>
 
         <SubmitButton pending={isSubmitting} pendingText="Signing in…">
@@ -86,7 +97,19 @@ export function LoginForm() {
         </SubmitButton>
       </form>
 
-      <p className="mt-8 text-sm text-muted-foreground">Need an account? Ask your admin to add you to the team.</p>
+      <p className="mt-6 text-center text-sm text-muted-foreground">Need an account? Ask your admin.</p>
+    </div>
+  );
+}
+
+// The sign-in boxes have an icon on the left.
+const INPUT_WITH_ICON = "pl-10";
+
+function WithIcon({ icon: Icon, children }) {
+  return (
+    <div className="relative">
+      <Icon className="pointer-events-none absolute top-1/2 left-3.5 z-10 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+      {children}
     </div>
   );
 }
@@ -122,7 +145,7 @@ export function ChoosePasswordForm({ name, temporaryPassword }) {
       <h1 className="mt-2 text-2xl font-semibold tracking-tight">Choose your own password</h1>
       <p className="mt-1.5 text-muted-foreground">You signed in with a temporary password. Pick a new one that only you know. You&apos;ll use it from now on.</p>
 
-      <form method="post" onSubmit={handleSubmit(onSubmit)} noValidate className="mt-8 space-y-5">
+      <form method="post" onSubmit={handleSubmit(onSubmit)} noValidate className="mt-7 space-y-5">
         {problem && (
           <Alert variant="destructive">
             <AlertDescription>{problem}</AlertDescription>
@@ -131,27 +154,41 @@ export function ChoosePasswordForm({ name, temporaryPassword }) {
 
         {!temporaryPassword && (
           <FormField id="currentPassword" label="Temporary password" error={errors.currentPassword} hint="The one your admin sent you.">
-            <PasswordInput
-              autoComplete="current-password"
-              {...fieldProps("currentPassword", errors.currentPassword)}
-              {...register("currentPassword", { required: "Please enter your temporary password." })}
-            />
+            <WithIcon icon={LockKeyhole}>
+              <PasswordInput
+                autoComplete="current-password"
+                className={INPUT_WITH_ICON}
+                {...fieldProps("currentPassword", errors.currentPassword)}
+                {...register("currentPassword", { required: "Please enter your temporary password." })}
+              />
+            </WithIcon>
           </FormField>
         )}
 
         <FormField id="newPassword" label="New password" error={errors.newPassword}>
-          <PasswordInput autoComplete="new-password" autoFocus {...fieldProps("newPassword", errors.newPassword)} {...register("newPassword", passwordRules)} />
+          <WithIcon icon={LockKeyhole}>
+            <PasswordInput
+              autoComplete="new-password"
+              autoFocus
+              className={INPUT_WITH_ICON}
+              {...fieldProps("newPassword", errors.newPassword)}
+              {...register("newPassword", passwordRules)}
+            />
+          </WithIcon>
         </FormField>
 
         <FormField id="confirmPassword" label="Type it again" error={errors.confirmPassword}>
-          <PasswordInput
-            autoComplete="new-password"
-            {...fieldProps("confirmPassword", errors.confirmPassword)}
-            {...register("confirmPassword", {
-              required: "Please type the new password again.",
-              validate: (value) => value === getValues("newPassword") || "The two passwords don't match.",
-            })}
-          />
+          <WithIcon icon={LockKeyhole}>
+            <PasswordInput
+              autoComplete="new-password"
+              className={INPUT_WITH_ICON}
+              {...fieldProps("confirmPassword", errors.confirmPassword)}
+              {...register("confirmPassword", {
+                required: "Please type the new password again.",
+                validate: (value) => value === getValues("newPassword") || "The two passwords don't match.",
+              })}
+            />
+          </WithIcon>
         </FormField>
 
         <SubmitButton pending={isSubmitting} pendingText="Saving…">

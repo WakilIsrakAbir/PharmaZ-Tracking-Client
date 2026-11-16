@@ -236,9 +236,12 @@ export const PAGE_SIZES = [10, 20, 50];
 // even for a list that fits on one page, so the list looks the same whatever its size. It sticks to
 // the bottom of the screen while a long list scrolls; the list's card must not have overflow-hidden
 // (use overflow-clip), or the bar can't stick.
-export function Pagination({ meta, onPage, onLimit }) {
+// With `fit` (how many rows fit the screen, see usePageSize), Per page also offers "Auto (9)", which
+// `auto` says is chosen; onLimit(null) picks it again.
+export function Pagination({ meta, onPage, onLimit, fit, auto = false }) {
   if (!meta || meta.total === 0) return null;
   const { page, limit, total, pages } = meta;
+  const offersAuto = fit !== undefined && fit !== null;
   const first = (page - 1) * limit + 1;
   const last = Math.min(page * limit, total);
 
@@ -254,7 +257,14 @@ export function Pagination({ meta, onPage, onLimit }) {
       <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
         <label className="flex items-center gap-2 text-muted-foreground">
           Per page
-          <Select compact value={limit} onChange={(event) => onLimit(Number(event.target.value))} aria-label="Rows per page" className="w-18">
+          <Select
+            compact
+            value={offersAuto && auto ? "auto" : limit}
+            onChange={(event) => onLimit(event.target.value === "auto" ? null : Number(event.target.value))}
+            aria-label="Rows per page"
+            className={offersAuto ? "w-28" : "w-18"}
+          >
+            {offersAuto && <option value="auto">Auto ({fit})</option>}
             {PAGE_SIZES.map((size) => (
               <option key={size} value={size}>
                 {size}

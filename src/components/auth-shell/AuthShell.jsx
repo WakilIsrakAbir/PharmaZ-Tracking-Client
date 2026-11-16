@@ -1,20 +1,23 @@
-import { CalendarDays, ClipboardCheck, Users } from "lucide-react";
-
 import { Logo } from "@/components/shared/Logo";
 import { STATUSES } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
-// The sign-in page frame: a brand panel on large screens, the form beside it.
+// The sign-in page frame, kept small enough to fit any laptop screen without scrolling.
+//   Large screens  the navy brand panel on the left; the form in a white card on the right.
+//   Phones         a navy band with the logo, and the form's card rising out of it.
 export function AuthShell({ children }) {
   return (
-    <div className="grid min-h-dvh bg-background lg:grid-cols-[1.05fr_1fr]">
+    <div className="grid min-h-dvh bg-canvas lg:grid-cols-2">
       <BrandPanel />
-      <main className="flex flex-col px-4 py-8 sm:px-8">
-        <Logo className="lg:hidden" />
-        <div className="flex flex-1 items-center justify-center py-10">
-          <div className="w-full max-w-sm">{children}</div>
+      <main className="flex min-w-0 flex-col">
+        <div className="relative overflow-hidden bg-primary px-6 pt-7 pb-20 text-primary-foreground lg:hidden">
+          <Backdrop />
+          <Logo inverted className="relative" />
         </div>
-        <p className="text-center text-xs text-muted-foreground">PharmaZ247 · Internal tool for the marketing team</p>
+        {/* On phones the card rises over the band, so it sits on a layer above it. */}
+        <div className="relative z-10 -mt-12 flex flex-1 items-start justify-center px-4 pb-8 sm:px-8 lg:mt-0 lg:items-center lg:p-10">
+          <div className="w-full max-w-sm rounded-2xl border bg-card p-6 shadow-xl shadow-primary/[0.06] sm:p-8">{children}</div>
+        </div>
       </main>
     </div>
   );
@@ -22,60 +25,59 @@ export function AuthShell({ children }) {
 
 function BrandPanel() {
   return (
-    <aside className="relative hidden overflow-hidden bg-primary p-12 text-primary-foreground lg:flex lg:flex-col">
-      <div aria-hidden="true" className="pointer-events-none absolute inset-0">
-        <div className="absolute -top-40 -right-32 size-[34rem] rounded-full bg-[radial-gradient(closest-side,rgba(98,120,224,0.45),transparent)]" />
-        <div className="absolute -bottom-48 -left-32 size-[36rem] rounded-full bg-[radial-gradient(closest-side,rgba(240,160,32,0.16),transparent)]" />
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.045)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.045)_1px,transparent_1px)] mask-[radial-gradient(ellipse_at_center,black_35%,transparent_75%)] bg-size-[48px_48px]" />
-      </div>
-
+    <aside className="relative hidden overflow-hidden bg-primary px-10 py-9 text-primary-foreground lg:flex lg:flex-col xl:px-14">
+      <Backdrop />
       <Logo inverted className="relative" />
-
-      <div className="relative my-auto max-w-md py-12">
-        <h2 className="text-4xl leading-[1.15] font-semibold tracking-tight text-balance">Every doctor and pharmacy, on track.</h2>
-        <p className="mt-4 text-lg leading-relaxed text-white/70">
-          Fill in onboarding forms after each visit, see them on one calendar, and know where every partner stands.
-        </p>
-        <div className="mt-10 space-y-3">
-          <PreviewCard when="Today · 5:00 PM" kind="Doctor" name="Dr. Tanvir Ahmed" place="Square Hospital Chambers, Panthapath" status="setup" />
-          <PreviewCard when="Tomorrow · 11:30 AM" kind="Pharmacy" name="Rahman Pharmacy" place="Dhanmondi 27, Dhaka" status="implementation" className="ml-8" />
-        </div>
+      <div className="relative my-auto w-full max-w-md py-8">
+        <h2 className="text-3xl leading-tight font-semibold tracking-tight text-balance">Every doctor and pharmacy, on track.</h2>
+        <p className="mt-3 text-white/65">Onboarding forms, one shared calendar, and where every partner stands.</p>
+        <TodayPreview className="mt-8" />
       </div>
-
-      <ul className="relative flex flex-wrap gap-x-6 gap-y-2 text-sm text-white/70">
-        <Feature icon={ClipboardCheck}>The forms you already use</Feature>
-        <Feature icon={CalendarDays}>One shared calendar</Feature>
-        <Feature icon={Users}>Everyone up to date</Feature>
-      </ul>
+      <p className="relative text-xs text-white/45">PharmaZ247 · Internal tool for the marketing team</p>
     </aside>
   );
 }
 
-// A small, made-up example of what the calendar shows.
-function PreviewCard({ when, kind, name, place, status, className }) {
-  const { label, dot } = STATUSES[status];
+// Soft light and a faint grid behind the navy, so it isn't a flat block.
+function Backdrop() {
   return (
-    <div className={cn("max-w-sm rounded-xl border border-white/10 bg-white/[0.07] p-4 shadow-lg shadow-black/10 backdrop-blur-sm", className)}>
-      <div className="flex items-center justify-between gap-3 text-xs font-medium text-white/60">
-        <span>{when}</span>
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2 py-0.5 text-white/90">
-          <span className={cn("size-1.5 rounded-full", dot)} />
-          {label}
-        </span>
-      </div>
-      <p className="mt-2 font-semibold">
-        {kind} · {name}
-      </p>
-      <p className="mt-0.5 text-sm text-white/60">{place}</p>
+    <div aria-hidden="true" className="pointer-events-none absolute inset-0">
+      <div className="absolute -top-40 -right-32 size-[34rem] rounded-full bg-[radial-gradient(closest-side,rgba(98,120,224,0.42),transparent)]" />
+      <div className="absolute -bottom-48 -left-32 size-[36rem] rounded-full bg-[radial-gradient(closest-side,rgba(240,160,32,0.14),transparent)]" />
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.04)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.04)_1px,transparent_1px)] mask-[radial-gradient(ellipse_at_center,black_35%,transparent_75%)] bg-size-[48px_48px]" />
     </div>
   );
 }
 
-function Feature({ icon: Icon, children }) {
+// A made-up glimpse of the day list on the dashboard: what the team sees once signed in.
+const PREVIEW = [
+  { initials: "TA", name: "Dr. Tanvir Ahmed", place: "Square Hospital · 11:00 AM", status: "setup" },
+  { initials: "RP", name: "Rahman Pharmacy", place: "Dhanmondi 27 · 2:30 PM", status: "implementation" },
+  { initials: "LP", name: "Lazz Pharma", place: "Kalabagan · 5:15 PM", status: "demo" },
+];
+
+function TodayPreview({ className }) {
   return (
-    <li className="flex items-center gap-2">
-      <Icon className="size-4 text-white/50" />
-      {children}
-    </li>
+    <div className={cn("overflow-hidden rounded-xl border border-white/10 bg-white/[0.06] shadow-2xl shadow-black/20 backdrop-blur-sm", className)}>
+      <p className="border-b border-white/10 px-4 py-2.5 text-[11px] font-semibold tracking-wide text-white/80 uppercase">Today</p>
+      <ul className="divide-y divide-white/[0.08]">
+        {PREVIEW.map((visit) => {
+          const { label, dot } = STATUSES[visit.status];
+          return (
+            <li key={visit.name} className="flex items-center gap-3 px-4 py-2.5">
+              <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white/10 text-[11px] font-semibold text-white/85">{visit.initials}</span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm font-semibold">{visit.name}</span>
+                <span className="block truncate text-xs text-white/55">{visit.place}</span>
+              </span>
+              <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-white/10 px-2 py-0.5 text-[11px] font-medium text-white/90">
+                <span className={cn("size-1.5 rounded-full", dot)} />
+                {label}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
   );
 }

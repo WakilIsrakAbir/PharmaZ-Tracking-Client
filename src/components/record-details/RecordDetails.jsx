@@ -24,7 +24,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useDeleteRecord, useRecord } from "@/lib/api";
 import { CONSULTATION_TYPES, FIELDS, PAYMENT_METHODS, TYPES } from "@/lib/constants";
-import { countSteps, dashboardLink, formatAvailability, formatDate, formatPhone, formatTaka, relativeDay, whatsappNumber } from "@/lib/format";
+import { countSteps, dashboardLink, daysAway, formatAvailability, formatDate, formatDuration, formatPhone, formatTaka, formatTimeRange, whatsappNumber } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 export function RecordDetails({ type, id, layout = "page" }) {
@@ -178,8 +178,20 @@ function DetailsCard({ record }) {
 
       <div className="space-y-4 p-4 sm:p-5">
         {/* When the visit is, and where (for a doctor, the chamber and its address). */}
+        {/* "Tuesday, 17 November 2026 · Tomorrow", then "12:30 – 2:00 PM · 1 hr 30 min". */}
         <Row icon={CalendarDays} label="Date and time">
-          {relativeDay(record.visitDate, new Date())}, {formatDate(record.visitDate, "d MMM yyyy · h:mm a")}
+          <span className="block">
+            {formatDate(record.visitDate, "EEEE, d MMMM yyyy")}
+            {daysAway(record.visitDate, new Date()) && (
+              <span className="font-normal text-muted-foreground"> · {daysAway(record.visitDate, new Date())}</span>
+            )}
+          </span>
+          <span className="block tabular-nums">
+            {formatTimeRange(record.visitDate, record.visitEndDate)}
+            {record.visitEndDate && (
+              <span className="font-normal text-muted-foreground"> · {formatDuration(record.visitDate, record.visitEndDate)}</span>
+            )}
+          </span>
         </Row>
         <Row icon={MapPin} label="Location">
           {record.chamberName && (

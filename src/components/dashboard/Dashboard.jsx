@@ -10,7 +10,7 @@ import { use, useRef, useState } from "react";
 import Link from "next/link";
 import { io } from "next/cache";
 import { addDays, addMonths, format } from "date-fns";
-import { ArrowLeft, ArrowRight, CalendarCheck, Plus, UserRound } from "lucide-react";
+import { ArrowLeft, ArrowRight, CalendarCheck, CircleCheck, History, Plus, UserRound } from "lucide-react";
 
 import { useUser } from "@/components/app-shell/useUser";
 import {
@@ -33,6 +33,8 @@ import {
   dhakaDateTime,
   firstName,
   formatDate,
+  formatDuration,
+  formatTimeRange,
   greeting,
   peopleLine,
   relativeDay,
@@ -78,6 +80,10 @@ export function Dashboard() {
       ? visits
       : visits.filter((visit) => visit.type === view.filter);
   const visitsByDay = groupByDay(shownVisits);
+  // The visit whose details are open: the picked record on the picked day (it can be on several days).
+  const pickedVisit = view.selected
+    ? visits.find((visit) => visit.id === view.selected.id && dayKey(visit.visitDate) === view.day)
+    : null;
   const visitsToday = visits.filter(
     (visit) => visit?.visitDate && dayKey(visit.visitDate) === today,
   ).length;
@@ -191,6 +197,15 @@ export function Dashboard() {
                   {formatDate(dhakaDateTime(view.day, "12:00"), "EEEE, d MMMM")}
                 </button>
               </div>
+              {isEarlierVisit(pickedVisit) && pickedVisit.now && (
+                <EarlierVisitNotice
+                  visit={pickedVisit}
+                  onOpenLatest={() => {
+                    const day = dayKey(pickedVisit.now.visitDate);
+                    showDetails({ month: day.slice(0, 7), day, type: pickedVisit.type, id: pickedVisit.id });
+                  }}
+                />
+              )}
               <RecordDetails
                 type={view.selected.type}
                 id={view.selected.id}
@@ -220,9 +235,12 @@ export function Dashboard() {
 // Admins see the whole team's visits, so each one also says whose it is (and who is assigned).
 // `canPlan` is false on a past day for marketing people: it only shows what happened (its visits can
 // still be opened and updated), so the "New … form" buttons stay away. Admins can plan on any day.
+// Each visit (DayVisitRow) says whether it is where the onboarding stands now ("Latest") or an earlier
+// stage that was updated later (with where it stands now); the header counts the ones updated later.
 // ---------------------------------------------------------------------------
 function DayVisits({ day, now, canPlan, visits, showSubmitter, onPickVisit }) {
   const middayOfDay = dhakaDateTime(day, "12:00");
+  const updatedLater = visits.filter(isEarlierVisit).length;
 
   return (
     <section className="overflow-hidden rounded-xl border bg-card">
@@ -237,6 +255,7 @@ function DayVisits({ day, now, canPlan, visits, showSubmitter, onPickVisit }) {
           {visits.length
             ? `${visits.length} visit${visits.length === 1 ? "" : "s"}`
             : "Nothing planned yet"}
+          {updatedLater > 0 && ` · ${updatedLater} updated later`}
         </p>
       </header>
 
@@ -253,49 +272,96 @@ function DayVisits({ day, now, canPlan, visits, showSubmitter, onPickVisit }) {
         <ul className="divide-y">
           {visits.map((visit) => (
             <li key={visitKey(visit)}>
-              <button
-                type="button"
-                onClick={() => onPickVisit(visit)}
-                className="flex w-full items-start gap-3 px-5 py-3.5 text-left transition-colors outline-none hover:bg-muted/50 focus-visible:bg-muted/50"
-              >
-                <Avatar
-                  name={visit.name || "?"}
-                  className="size-10"
-                />
-                <div className="min-w-0 flex-1">
-                  <p className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-                    <TypeIcon type={visit.type} className="size-3.5" />
-                    {formatDate(visit.visitDate, "h:mm a")}
-                  </p>
-                  <p className="truncate font-semibold">{visit.name || `Unnamed ${visit.type}`}</p>
-                  <p className="truncate text-sm text-muted-foreground">
-                    {visit.place || "—"}
-                  </p>
-                  {/* An earlier stage (the badge shows the status it had then): where it stands now. */}
-                  {isEarlierVisit(visit) && visit.now && (
-                    <p className="mt-0.5 flex items-center gap-1 truncate text-xs font-medium text-primary">
-                      <ArrowRight className="size-3 shrink-0" aria-hidden="true" />
-                      Now {STATUSES[visit.now.status]?.label} ·{" "}
-                      {formatDate(visit.now.visitDate, "EEE d MMM")}
-                    </p>
-                  )}
-                  {peopleLine(visit, { showSubmitter }) && (
-                    <p className="mt-0.5 flex items-center gap-1 truncate text-xs text-muted-foreground">
-                      <UserRound
-                        className="size-3 shrink-0"
-                        aria-hidden="true"
-                      />{" "}
-                      {peopleLine(visit, { showSubmitter })}
-                    </p>
-                  )}
-                </div>
-                <StatusBadge status={visit.status} steps={visit.steps} />
-              </button>
+              <DayVisitRow visit={visit} showSubmitter={showSubmitter} onPick={() => onPickVisit(visit)} />
             </li>
           ))}
         </ul>
       )}
     </section>
+  );
+}
+
+// One visit in the day list, one fact per line so nothing has to squeeze:
+//   [avatar]  Skin Pharma 24                              (the name gets the whole width)
+//             Square Hospital Chambers                    (a doctor's chamber, when there is one)
+//             [● Account Creation]  ⟳ Updated later   or  [● Setup]  ✓ Latest
+//             🔗 10:39 – 11:30 PM · 51 min
+//             👤 by Wakil Israk Abir · with Ferdus Ahmed
+//             ┌ Now [● Setup] Fri 6 Nov · 10:00 AM ┐       (an earlier visit: where it stands now)
+// "Latest" or "Updated later" sits right beside the status on every row, so a busy day reads at a glance.
+function DayVisitRow({ visit, showSubmitter, onPick }) {
+  const earlier = isEarlierVisit(visit);
+  const people = peopleLine(visit, { showSubmitter });
+  return (
+    <button
+      type="button"
+      onClick={onPick}
+      className="flex w-full items-start gap-3 px-5 py-4 text-left transition-colors outline-none hover:bg-muted/50 focus-visible:bg-muted/50"
+    >
+      <Avatar name={visit.name || "?"} className="size-10" />
+      <div className="min-w-0 flex-1">
+        <p className="line-clamp-2 leading-snug font-semibold">{visit.name || `Unnamed ${visit.type}`}</p>
+        {visit.place && visit.place !== visit.name && <p className="truncate text-sm text-muted-foreground">{visit.place}</p>}
+        <div className="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1">
+          <StatusBadge status={visit.status} steps={visit.steps} />
+          {earlier ? (
+            <span className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground">
+              <History className="size-3.5" aria-hidden="true" /> Updated later
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1 text-xs font-medium text-status-implementation-ink">
+              <CircleCheck className="size-3.5" aria-hidden="true" /> Latest
+            </span>
+          )}
+        </div>
+        <p className="mt-1.5 flex items-center gap-1.5 text-xs text-muted-foreground tabular-nums">
+          <TypeIcon type={visit.type} className="size-3.5 shrink-0" />
+          <span className="font-medium text-foreground/80">{formatTimeRange(visit.visitDate, visit.visitEndDate)}</span>
+          {visit.visitEndDate && <span>· {formatDuration(visit.visitDate, visit.visitEndDate)}</span>}
+        </p>
+        {people && (
+          <p className="mt-1 flex items-start gap-1.5 text-xs text-muted-foreground">
+            <UserRound className="mt-px size-3.5 shrink-0" aria-hidden="true" />
+            <span className="line-clamp-2">{people}</span>
+          </p>
+        )}
+        {earlier && visit.now && (
+          <div className="mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-lg border bg-muted/40 px-2.5 py-2 text-xs text-muted-foreground">
+            <span className="font-medium">Now</span>
+            <StatusBadge status={visit.now.status} className="px-2 py-px text-[11px]" />
+            <span className="tabular-nums">
+              {formatDate(visit.now.visitDate, "EEE d MMM")} · {formatTimeRange(visit.now.visitDate, visit.now.visitEndDate)}
+            </span>
+          </div>
+        )}
+      </div>
+    </button>
+  );
+}
+
+// Above the details of an earlier visit. The details are the onboarding as it is now, so this says
+// which visit was opened, where the onboarding stands now, and leads to its latest visit.
+function EarlierVisitNotice({ visit, onOpenLatest }) {
+  const label = (status) => STATUSES[status]?.label ?? status;
+  return (
+    <div className="rounded-xl border border-status-setup/40 bg-status-setup-soft px-4 py-3 text-sm text-status-setup-ink">
+      <p className="flex items-center gap-1.5 font-semibold">
+        <History className="size-4 shrink-0" aria-hidden="true" /> Earlier visit, updated later
+      </p>
+      <p className="mt-1">
+        This was the <span className="font-semibold">{label(visit.status)}</span> visit on{" "}
+        {formatDate(visit.visitDate, "EEE d MMM")}, {formatTimeRange(visit.visitDate, visit.visitEndDate)}. It is now{" "}
+        <span className="font-semibold">{label(visit.now.status)}</span> on {formatDate(visit.now.visitDate, "EEE d MMM")},{" "}
+        {formatTimeRange(visit.now.visitDate, visit.now.visitEndDate)}. The details below are the latest.
+      </p>
+      <button
+        type="button"
+        onClick={onOpenLatest}
+        className="mt-2 inline-flex items-center gap-1 rounded-sm font-semibold underline-offset-2 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring/50"
+      >
+        Go to the latest visit <ArrowRight className="size-4" aria-hidden="true" />
+      </button>
+    </div>
   );
 }
 
