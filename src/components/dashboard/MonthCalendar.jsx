@@ -245,7 +245,8 @@ function VisitChip({ visit, isPicked, onClick, className }) {
 // "11:00 AM – 12:30 PM · Dr. Tanvir Ahmed · Square Hospital Chambers", and for an earlier stage where
 // the onboarding stands now: "… · Updated later: now Ongoing on 10 Nov".
 function chipTitle(visit, name) {
-  const parts = [formatTimeRange(visit.visitDate, visit.visitEndDate), name, visit.place !== name && visit.place];
+  const going = (visit.assignedTo ?? []).map((person) => person.name).join(", ");
+  const parts = [formatTimeRange(visit.visitDate, visit.visitEndDate), name, visit.place !== name && visit.place, going && `Who goes: ${going}`];
   if (isEarlierVisit(visit) && visit.now) {
     parts.push(`Updated later: now ${STATUSES[visit.now.status]?.label} on ${formatDate(visit.now.visitDate, "d MMM")}`);
   }

@@ -13,7 +13,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { CalendarDays, ExternalLink, LoaderCircle, Mail, MapPin, MessageCircle, Pencil, Phone, SearchX, StickyNote, Trash2, UserPlus } from "lucide-react";
+import { CalendarDays, ExternalLink, LoaderCircle, Mail, MapPin, MessageCircle, Pencil, Phone, SearchX, StickyNote, Trash2, UserPlus, Users } from "lucide-react";
 import { toast } from "sonner";
 
 import { useUser } from "@/components/app-shell/useUser";
@@ -23,13 +23,13 @@ import { Avatar, ConfirmDialog, EmptyState, PageHeader, StatusBadge, TypeBadge }
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useDeleteRecord, useRecord } from "@/lib/api";
-import { CONSULTATION_TYPES, FIELDS, PAYMENT_METHODS, TYPES } from "@/lib/constants";
+import { CONSULTATION_TYPES, FIELDS, PAYMENT_METHODS, STATUSES, TYPES } from "@/lib/constants";
 import { countSteps, dashboardLink, daysAway, formatAvailability, formatDate, formatDuration, formatPhone, formatTaka, formatTimeRange, whatsappNumber } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
-// `highlightDay` (panel only): the day of an earlier visit opened from the calendar, whose lines the
-// history marks.
-export function RecordDetails({ type, id, layout = "page", highlightDay = null }) {
+// Panel only: `visitDay` is the day of the visit opened from the calendar (its "Who goes" shows at the
+// top); `highlightDay` is that day when it is an earlier visit, whose lines the history marks.
+export function RecordDetails({ type, id, layout = "page", highlightDay = null, visitDay = null }) {
   const { data: record, isPending, isError } = useRecord(type, id);
 
   if (isPending) return <DetailsSkeleton />;
@@ -40,7 +40,7 @@ export function RecordDetails({ type, id, layout = "page", highlightDay = null }
   if (layout === "panel") {
     return (
       <div className="space-y-3">
-        <DetailsCard record={record} />
+        <DetailsCard record={record} visitDay={visitDay} />
         <StatusCard record={record} editHref={`${TYPES[type].path}/${record.id}/edit`} highlightDay={highlightDay} />
       </div>
     );
@@ -52,6 +52,7 @@ export function RecordDetails({ type, id, layout = "page", highlightDay = null }
       <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
         <div className="space-y-6">
           <DetailsCard record={record} />
+          <VisitsCard record={record} />
           <FormCard record={record} />
         </div>
         {/* Below the fixed header (back link, title and buttons) at the top of the screen. */}
@@ -117,11 +118,12 @@ function PageActions({ record }) {
 // ---------------------------------------------------------------------------
 // Section 1, read only: who and where, and how to reach them
 // ---------------------------------------------------------------------------
-function DetailsCard({ record }) {
+function DetailsCard({ record, visitDay }) {
   const subtitle = subtitleOf(record);
   const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(record.address)}`;
   const isAdmin = useUser()?.role === "admin";
   const [assigning, setAssigning] = useState(false);
+  const visit = visitDay ? record.visits?.find((item) => item.day === visitDay) : null;
 
   return (
     <section aria-label="Details" className="@container divide-y overflow-hidden rounded-xl border bg-card">
@@ -136,11 +138,11 @@ function DetailsCard({ record }) {
                 <TypeBadge type={record.type} />
                 <StatusBadge status={record.status} steps={countSteps(record.implementationSteps)} />
               </div>
-              {/* Only admins decide who goes (AssignDialog.jsx). Filled in the brand color, so it reads as the
-                  one action on this card and not as another badge. */}
+              {/* Only admins choose the onboarding team (AssignDialog.jsx); who goes on a visit is chosen
+                  in Who goes. Filled in the brand color, so it reads as the main action on this card. */}
               {isAdmin && (
                 <Button size="sm" className="shrink-0" onClick={() => setAssigning(true)}>
-                  <UserPlus /> Assign
+                  <Users /> Onboarding team
                 </Button>
               )}
             </div>
@@ -149,31 +151,24 @@ function DetailsCard({ record }) {
           </div>
         </div>
 
-        {/* The people on this form: who entered it, and who the admin sent. Two columns when the card
-            is wide enough (the full page), one under the other in the dashboard panel. */}
-        <div className="mt-4 grid gap-4 border-t pt-4 @md:grid-cols-2">
-          <div>
-            <h4 className="mb-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase">Submitted by</h4>
-            {record.createdBy ? (
-              <PersonRow person={record.createdBy} note={formatDate(record.createdAt, "d MMM yyyy")} />
-            ) : (
-              <p className="text-sm text-muted-foreground">Unknown</p>
-            )}
-          </div>
-          <div>
-            <h4 className="mb-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase">Assigned to</h4>
-            {record.assignedTo.length === 0 ? (
-              <p className="text-sm text-muted-foreground">{isAdmin ? "No one yet. Use Assign to send a teammate or anyone by email." : "No one yet."}</p>
-            ) : (
-              <ul className="space-y-2.5">
-                {record.assignedTo.map((person) => (
-                  <li key={person.email}>
-                    <PersonRow person={person} />
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
+        {/* The visit opened from the calendar: who goes on it, first. */}
+        {visit && <WhoGoes record={record} visit={visit} isAdmin={isAdmin} />}
+
+        {/* The onboarding team. Two columns of people when the card is wide enough (the full page), one
+            under the other in the dashboard panel. Who submitted the form is in the history's first line. */}
+        <div className="mt-4 border-t pt-4">
+          <h4 className="mb-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase">Onboarding team</h4>
+          {record.assignedTo.length === 0 ? (
+            <p className="text-sm text-muted-foreground">{isAdmin ? "No one yet. Use Onboarding team to add a teammate or anyone by email." : "No one yet."}</p>
+          ) : (
+            <ul className="grid gap-2.5 @md:grid-cols-2">
+              {record.assignedTo.map((person) => (
+                <li key={person.email}>
+                  <PersonRow person={person} />
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
         {isAdmin && <AssignDialog open={assigning} onOpenChange={setAssigning} record={record} />}
       </div>
@@ -256,6 +251,87 @@ function DetailsCard({ record }) {
         )}
       </div>
     </section>
+  );
+}
+
+// Who goes on one visit, in a tinted box at the top of the details:
+//   WHO GOES · TUE 17 NOV, 10:00 AM              [Assign for this visit]
+//   (RK) Rafi Karim   01711-234567
+// Only the people an admin chose for this visit; the onboarding team doesn't go by itself.
+function WhoGoes({ record, visit, isAdmin }) {
+  const [assigning, setAssigning] = useState(false);
+  const chosen = visit.assignedTo.length > 0;
+  return (
+    <section aria-label="Who goes on this visit" className="mt-4 rounded-lg border border-ring/30 bg-secondary/50 p-3">
+      <div className="flex items-start justify-between gap-2">
+        <h4 className="pt-1.5 text-xs font-semibold tracking-wide text-primary uppercase">
+          Who goes · <span className="tabular-nums">{formatDate(visit.visitDate, "EEE d MMM")}, {formatTimeRange(visit.visitDate, visit.visitEndDate)}</span>
+        </h4>
+        {isAdmin && (
+          <Button size="sm" variant="outline" className="shrink-0 bg-background" onClick={() => setAssigning(true)}>
+            <UserPlus /> {chosen ? "Change" : "Assign for this visit"}
+          </Button>
+        )}
+      </div>
+      {chosen ? (
+        <ul className="mt-2 space-y-2.5">
+          {visit.assignedTo.map((person) => (
+            <li key={person.email}>
+              <PersonRow person={person} />
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="mt-2 text-sm text-muted-foreground">{isAdmin ? "No one chosen for this visit yet." : "No one chosen yet. An admin chooses who goes."}</p>
+      )}
+      {isAdmin && <AssignDialog open={assigning} onOpenChange={setAssigning} record={record} visit={visit} />}
+    </section>
+  );
+}
+
+// Full page: every visit of the onboarding, newest first, each with who goes (admins can change it).
+//   ┃ Tue 17 Nov 2026 · 10:00 AM – 12:00 PM   [Now]
+//   ┃ [● Implementation · 1/3]  👥 Rafi, Sumi                         [Assign]
+function VisitsCard({ record }) {
+  const isAdmin = useUser()?.role === "admin";
+  const [assigning, setAssigning] = useState(null); // the visit in the dialog
+  const visits = [...(record.visits ?? [])].reverse();
+  if (visits.length === 0) return null;
+  return (
+    <Card title="Visits">
+      <ul className="-my-1 divide-y">
+        {visits.map((visit) => (
+          <li key={visit.day} className="flex items-stretch gap-3 py-3">
+            <span className={cn("w-1 shrink-0 rounded-full", STATUSES[visit.status]?.dot)} aria-hidden="true" />
+            <div className="min-w-0 flex-1">
+              <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-medium tabular-nums">
+                {formatDate(visit.visitDate, "EEE d MMM yyyy")} · {formatTimeRange(visit.visitDate, visit.visitEndDate)}
+                {visit.current && (
+                  <span className="rounded-full bg-primary/10 px-1.5 py-px text-[10px] font-semibold tracking-wide text-primary uppercase">Now</span>
+                )}
+              </p>
+              <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
+                <StatusBadge status={visit.status} steps={visit.steps} />
+                <span className="inline-flex min-w-0 items-center gap-1 text-xs text-muted-foreground">
+                  <Users className="size-3.5 shrink-0" aria-hidden="true" />
+                  <span className="truncate">
+                    {visit.assignedTo.length ? visit.assignedTo.map((person) => person.name).join(", ") : "No one chosen yet"}
+                  </span>
+                </span>
+              </div>
+            </div>
+            {isAdmin && (
+              <Button variant="ghost" size="sm" className="shrink-0 self-center" onClick={() => setAssigning(visit)} aria-label={`Who goes on ${formatDate(visit.visitDate, "EEE d MMM")}`}>
+                <UserPlus /> Assign
+              </Button>
+            )}
+          </li>
+        ))}
+      </ul>
+      {isAdmin && assigning && (
+        <AssignDialog open onOpenChange={(open) => !open && setAssigning(null)} record={record} visit={assigning} />
+      )}
+    </Card>
   );
 }
 

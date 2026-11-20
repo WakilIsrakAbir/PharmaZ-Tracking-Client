@@ -8,10 +8,11 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { CalendarDays, ChevronDown, ChevronUp, Ellipsis, ListChecks, LoaderCircle, Pencil, PencilLine, Plus, Trash2, X } from "lucide-react";
+import { CalendarDays, ChevronDown, ChevronUp, Ellipsis, ListChecks, LoaderCircle, Pencil, PencilLine, Plus, Trash2, Users, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { useUser } from "@/components/app-shell/useUser";
+import { AssignDialog } from "@/components/record-details/AssignDialog";
 import { DeleteUpdateDialog } from "@/components/record-details/DeleteUpdateDialog";
 import { madeAt, madeBy, statusLabel, typedNote, visitWhen } from "@/components/record-details/updates";
 import { TimeSelect, movedEndTime } from "@/components/shared/TimeSelect";
@@ -78,13 +79,20 @@ function StatusUpdate({ record }) {
   const savedSteps = record.implementationSteps ?? [];
   const updateStatus = useUpdateStatus(record.type);
   // Marketing people move visits to today or later; an admin may also put one on a day that has passed.
-  const earliestDay = useUser()?.role === "admin" ? undefined : dayKey(new Date());
+  const isAdmin = useUser()?.role === "admin";
+  const earliestDay = isAdmin ? undefined : dayKey(new Date());
   const [status, setStatus] = useState(record.status);
   const [day, setDay] = useState(toDateInput(record.visitDate));
   const [time, setTime] = useState(toTimeInput(record.visitDate));
   const [endTime, setEndTime] = useState(record.visitEndDate ? toTimeInput(record.visitEndDate) : ""); // "" = no end time
   const [note, setNote] = useState("");
   const [steps, setSteps] = useState(savedSteps);
+  // Admins: who goes on the visit this update sets. It starts as who goes on the current visit (null
+  // for nobody), so a rescheduled visit keeps them; change it when other people go on the next visit.
+  const current = record.visits?.find((visit) => visit.current);
+  const savedTeam = current?.assignedTo.length ? current.assignedTo : null;
+  const [team, setTeam] = useState(savedTeam);
+  const [pickingTeam, setPickingTeam] = useState(false);
 
   const visitDate = dhakaDateTime(day, time || "00:00");
   const visitEndDate = endTime ? dhakaDateTime(day, endTime) : null;
@@ -93,7 +101,8 @@ function StatusUpdate({ record }) {
   const endChanged = visitEndDate !== (record.visitEndDate ? new Date(record.visitEndDate).toISOString() : null);
   const stepsChanged = JSON.stringify(stepsToSave(steps)) !== JSON.stringify(stepsToSave(savedSteps));
   const hasNote = note.trim() !== "";
-  const canSave = Boolean(day) && (statusChanged || dateChanged || endChanged || stepsChanged || hasNote) && !updateStatus.isPending;
+  const teamChanged = isAdmin && teamKey(team) !== teamKey(savedTeam);
+  const canSave = Boolean(day) && (statusChanged || dateChanged || endChanged || stepsChanged || hasNote || teamChanged) && !updateStatus.isPending;
 
   // A new start time takes the end time along, so the visit keeps its length.
   function changeStartTime(next) {
@@ -101,17 +110,26 @@ function StatusUpdate({ record }) {
     setTime(next);
   }
 
-  // Only the days the steps were done changed: the API adds no history line for that.
-  const onlyStepDays =
-    stepsChanged && !statusChanged && !dateChanged && !endChanged && !hasNote && sameSteps(withoutDays(steps), withoutDays(savedSteps));
+  // Only the days the steps were done, or only who goes, changed: the API adds no history line for that.
+  const visitSame = !statusChanged && !dateChanged && !endChanged && !hasNote;
+  const onlyStepDays = visitSame && !teamChanged && stepsChanged && sameSteps(withoutDays(steps), withoutDays(savedSteps));
+  const onlyTeam = visitSame && !stepsChanged && teamChanged;
 
   async function save() {
     const change = { id: record.id, status, visitDate, visitEndDate, note: note.trim() };
     if (stepsChanged) change.implementationSteps = stepsToSave(steps);
+    // An admin always says who goes on the visit being saved ([] for nobody).
+    if (isAdmin) change.visitTeam = (team ?? []).map(({ email, name, teammate }) => (teammate ? { email } : { email, name }));
     try {
       // A new status or visit time is emailed to everyone assigned; say who got it, and in red who didn't.
       const { meta } = await updateStatus.mutateAsync(change);
-      const saved = statusChanged ? `${record.name || "Form"} is now in ${STATUSES[status].label}.` : onlyStepDays ? "Step dates saved." : "Update saved.";
+      const saved = statusChanged
+        ? `${record.name || "Form"} is now in ${STATUSES[status].label}.`
+        : onlyStepDays
+          ? "Step dates saved."
+          : onlyTeam
+            ? "Who goes saved."
+            : "Update saved.";
       const email = emailSummary(saved, meta?.email);
       if (email.problem) toast.error(email.text, { duration: 10_000 });
       else toast.success(email.text);
@@ -148,6 +166,23 @@ function StatusUpdate({ record }) {
         <TimeSelect id={`visit-start-${record.id}`} value={time} onChange={changeStartTime} />
         <TimeSelect id={`visit-end-${record.id}`} value={endTime} onChange={setEndTime} after={time} optional placeholder="No end time" />
       </div>
+      {/* Admins: who goes on this visit, chosen in the Assign dialog (nothing is saved until Save update). */}
+      {isAdmin && (
+        <div className="space-y-1.5">
+          <p className="text-xs font-medium text-muted-foreground">Who goes</p>
+          <button
+            type="button"
+            onClick={() => setPickingTeam(true)}
+            aria-label={`Who goes: ${teamLabel(team)}. Change`}
+            className="flex w-full items-center gap-2 rounded-md border border-input bg-background px-3 py-2 text-left text-sm transition-colors outline-none hover:bg-muted/40 focus-visible:ring-3 focus-visible:ring-ring/50"
+          >
+            <Users className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+            <span className="min-w-0 flex-1 truncate">{teamLabel(team)}</span>
+            <span className="shrink-0 text-xs font-semibold text-primary">Change</span>
+          </button>
+          <AssignDialog open={pickingTeam} onOpenChange={setPickingTeam} record={record} pick={{ day, people: team, onPick: setTeam }} />
+        </div>
+      )}
       {status === "implementation" && <ImplementationSteps steps={steps} savedSteps={savedSteps} onChange={setSteps} />}
       <Textarea
         rows={2}
@@ -168,6 +203,10 @@ function StatusUpdate({ record }) {
 // for a done step the day it was done (null for a step just ticked: the API puts today).
 const stepsToSave = (steps) => steps.map(({ id, title, done, doneAt }) => ({ id, title, done, doneAt: done ? (doneAt ?? null) : null }));
 const withoutDays = (steps) => stepsToSave(steps).map(({ doneAt, ...step }) => step);
+
+// Who goes, as one comparable string ("" for nobody), and in words.
+const teamKey = (people) => (people ?? []).map((person) => person.email).sort().join("|");
+const teamLabel = (people) => (people?.length ? people.map((person) => person.name).join(", ") : "No one chosen yet");
 const sameSteps = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 
 // The five statuses as buttons that wrap evenly (3 + 2 in the panel). The chosen one is filled in.

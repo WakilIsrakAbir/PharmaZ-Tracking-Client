@@ -133,6 +133,11 @@ export const useDeleteRecord = (type) =>
 export const useAssign = (type) =>
   useRecordMutation(type, ({ id, assignees }) => api(`${pathFor(type)}/${id}/assignees`, { method: "PUT", body: { assignees } }));
 
+// Admins only: { id, day, assignees } chooses who goes on the visit of `day` (a Dhaka day); an empty
+// list gives that visit back to the onboarding team.
+export const useAssignVisit = (type) =>
+  useRecordMutation(type, ({ id, day, assignees }) => api(`${pathFor(type)}/${id}/visits/${day}/assignees`, { method: "PUT", body: { assignees } }));
+
 // ---------------------------------------------------------------------------
 // Deleting an update from a record's history (admins only). An update is named by when it was
 // made: its `at`, exactly as the API sent it.

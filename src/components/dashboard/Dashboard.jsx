@@ -212,6 +212,7 @@ export function Dashboard() {
                 type={view.selected.type}
                 id={view.selected.id}
                 layout="panel"
+                visitDay={view.day}
                 highlightDay={isEarlierVisit(pickedVisit) ? view.day : null}
               />
             </div>
