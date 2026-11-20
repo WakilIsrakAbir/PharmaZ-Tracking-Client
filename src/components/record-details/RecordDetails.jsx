@@ -27,7 +27,9 @@ import { CONSULTATION_TYPES, FIELDS, PAYMENT_METHODS, TYPES } from "@/lib/consta
 import { countSteps, dashboardLink, daysAway, formatAvailability, formatDate, formatDuration, formatPhone, formatTaka, formatTimeRange, whatsappNumber } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
-export function RecordDetails({ type, id, layout = "page" }) {
+// `highlightDay` (panel only): the day of an earlier visit opened from the calendar, whose lines the
+// history marks.
+export function RecordDetails({ type, id, layout = "page", highlightDay = null }) {
   const { data: record, isPending, isError } = useRecord(type, id);
 
   if (isPending) return <DetailsSkeleton />;
@@ -39,7 +41,7 @@ export function RecordDetails({ type, id, layout = "page" }) {
     return (
       <div className="space-y-3">
         <DetailsCard record={record} />
-        <StatusCard record={record} editHref={`${TYPES[type].path}/${record.id}/edit`} />
+        <StatusCard record={record} editHref={`${TYPES[type].path}/${record.id}/edit`} highlightDay={highlightDay} />
       </div>
     );
   }

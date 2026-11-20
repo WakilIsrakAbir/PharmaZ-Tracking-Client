@@ -134,6 +134,32 @@ export const useAssign = (type) =>
   useRecordMutation(type, ({ id, assignees }) => api(`${pathFor(type)}/${id}/assignees`, { method: "PUT", body: { assignees } }));
 
 // ---------------------------------------------------------------------------
+// Deleting an update from a record's history (admins only). An update is named by when it was
+// made: its `at`, exactly as the API sent it.
+// ---------------------------------------------------------------------------
+const updatePath = (type, id, at) => `${pathFor(type)}/${id}/history/${encodeURIComponent(at)}`;
+
+// What deleting the update would change, without changing anything (a dry run) →
+// { update, onboarding: { before, after, changed }, calendar: { removed, added, changed }, emails }.
+// `enabled` while the "Delete update" dialog is open; always asked afresh.
+export function useUpdateRemovalPreview(type, id, at, { enabled = true } = {}) {
+  return useQuery({
+    queryKey: ["update-removal", type, id, at],
+    queryFn: async () => (await api(`${updatePath(type, id, at)}?dryRun=true`, { method: "DELETE" })).meta.change,
+    enabled: enabled && Boolean(type && id && at),
+    gcTime: 0,
+    retry: false,
+  });
+}
+
+// { id, at } deletes the update. The answer's `meta.removal` puts it back (useRestoreUpdate).
+export const useDeleteUpdate = (type) => useRecordMutation(type, ({ id, at }) => api(updatePath(type, id, at), { method: "DELETE" }));
+
+// { id, removal } puts back what a delete took away ("Undo").
+export const useRestoreUpdate = (type) =>
+  useRecordMutation(type, ({ id, removal }) => api(`${pathFor(type)}/${id}/history/restore`, { method: "POST", body: { removal } }));
+
+// ---------------------------------------------------------------------------
 // Support calls (the support team and admins)
 // ---------------------------------------------------------------------------
 

@@ -10,7 +10,7 @@ import { use, useRef, useState } from "react";
 import Link from "next/link";
 import { io } from "next/cache";
 import { addDays, addMonths, format } from "date-fns";
-import { ArrowLeft, ArrowRight, CalendarCheck, ChevronRight, CornerDownRight, History, Plus } from "lucide-react";
+import { ArrowDown, ArrowLeft, ArrowRight, CalendarCheck, ChevronRight, CornerDownRight, History, Plus } from "lucide-react";
 
 import { useUser } from "@/components/app-shell/useUser";
 import {
@@ -200,16 +200,19 @@ export function Dashboard() {
               {isEarlierVisit(pickedVisit) && pickedVisit.now && (
                 <EarlierVisitNotice
                   visit={pickedVisit}
+                  canDelete={isAdmin}
                   onOpenLatest={() => {
                     const day = dayKey(pickedVisit.now.visitDate);
                     showDetails({ month: day.slice(0, 7), day, type: pickedVisit.type, id: pickedVisit.id });
                   }}
                 />
               )}
+              {/* An earlier visit's lines are marked in the history, so it's clear which one to delete. */}
               <RecordDetails
                 type={view.selected.type}
                 id={view.selected.id}
                 layout="panel"
+                highlightDay={isEarlierVisit(pickedVisit) ? view.day : null}
               />
             </div>
           ) : (
@@ -327,8 +330,9 @@ function DayVisitRow({ visit, showSubmitter, onPick }) {
 }
 
 // Above the details of an earlier visit. The details are the onboarding as it is now, so this says
-// which visit was opened, where the onboarding stands now, and leads to its latest visit.
-function EarlierVisitNotice({ visit, onOpenLatest }) {
+// which visit was opened, where the onboarding stands now, and leads to its latest visit. Admins also
+// get "Find it in the history": the visit's lines are marked there, each with ⋯ → Delete update.
+function EarlierVisitNotice({ visit, canDelete, onOpenLatest }) {
   const label = (status) => STATUSES[status]?.label ?? status;
   return (
     <div className="rounded-xl border border-status-setup/40 bg-status-setup-soft px-4 py-3 text-sm text-status-setup-ink">
@@ -341,15 +345,35 @@ function EarlierVisitNotice({ visit, onOpenLatest }) {
         <span className="font-semibold">{label(visit.now.status)}</span> on {formatDate(visit.now.visitDate, "EEE d MMM")},{" "}
         {formatTimeRange(visit.now.visitDate, visit.now.visitEndDate)}. The details below are the latest.
       </p>
-      <button
-        type="button"
-        onClick={onOpenLatest}
-        className="mt-2 inline-flex items-center gap-1 rounded-sm font-semibold underline-offset-2 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring/50"
-      >
-        Go to the latest visit <ArrowRight className="size-4" aria-hidden="true" />
-      </button>
+      <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1">
+        <button
+          type="button"
+          onClick={onOpenLatest}
+          className="inline-flex items-center gap-1 rounded-sm font-semibold underline-offset-2 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring/50"
+        >
+          Go to the latest visit <ArrowRight className="size-4" aria-hidden="true" />
+        </button>
+        {canDelete && (
+          <button
+            type="button"
+            onClick={findInHistory}
+            className="inline-flex items-center gap-1 rounded-sm font-medium underline-offset-2 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring/50"
+          >
+            Added by mistake? Find it in the history <ArrowDown className="size-4" aria-hidden="true" />
+          </button>
+        )}
+      </div>
     </div>
   );
+}
+
+// Scrolls to the first marked line of the history (see History in StatusCard.jsx) and puts the
+// focus on its ⋯ button, so Enter opens "Delete update…".
+function findInHistory() {
+  const line = document.querySelector("[data-marked-update]");
+  if (!line) return;
+  line.scrollIntoView({ behavior: "smooth", block: "center" });
+  line.querySelector("button")?.focus({ preventScroll: true });
 }
 
 // The two buttons that start a new form, both alike so neither looks "selected".
