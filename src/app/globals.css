@@ -106,12 +106,15 @@
   --sidebar-border: #e2e5ee;
 
   /* Status: bright dot, soft background, dark ink (readable on the soft background) */
-  --status-account: #6366f1;
-  --status-account-soft: #eef2ff;
-  --status-account-ink: #4338ca;
-  --status-demo: #0d9488;
-  --status-demo-soft: #e4f6f3;
-  --status-demo-ink: #0f6e63;
+  /* The six statuses never look alike: Account Creation grey (the start, like "to do"), Demo purple,
+     Ongoing blue, Setup amber, Implementation green, Support brown. Every pair is clearly apart (CIEDE2000
+     ΔE ≥ 13), and Support's brown is far from the red of Delete buttons and errors too. */
+  --status-account: #64748b;
+  --status-account-soft: #f1f5f9;
+  --status-account-ink: #334155;
+  --status-demo: #9333ea;
+  --status-demo-soft: #f5edfe;
+  --status-demo-ink: #7e22ce;
   --status-ongoing: #2f6fed;
   --status-ongoing-soft: #eaf1fe;
   --status-ongoing-ink: #1d4fc4;
@@ -121,9 +124,9 @@
   --status-implementation: #16a37a;
   --status-implementation-soft: #e5f6ee;
   --status-implementation-ink: #0b7553;
-  --status-support: #7c5cd6;
-  --status-support-soft: #efeafb;
-  --status-support-ink: #5b3bb0;
+  --status-support: #8b5a2b;
+  --status-support-soft: #f7f0e8;
+  --status-support-ink: #6b4320;
 }
 
 @layer base {
