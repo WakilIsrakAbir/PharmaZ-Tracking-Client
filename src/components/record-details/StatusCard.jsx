@@ -8,7 +8,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ChevronDown, ChevronUp, Ellipsis, ListChecks, LoaderCircle, Pencil, PencilLine, Plus, Trash2, X } from "lucide-react";
+import { CalendarDays, ChevronDown, ChevronUp, Ellipsis, ListChecks, LoaderCircle, Pencil, PencilLine, Plus, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { useUser } from "@/components/app-shell/useUser";
@@ -101,13 +101,17 @@ function StatusUpdate({ record }) {
     setTime(next);
   }
 
+  // Only the days the steps were done changed: the API adds no history line for that.
+  const onlyStepDays =
+    stepsChanged && !statusChanged && !dateChanged && !endChanged && !hasNote && sameSteps(withoutDays(steps), withoutDays(savedSteps));
+
   async function save() {
     const change = { id: record.id, status, visitDate, visitEndDate, note: note.trim() };
     if (stepsChanged) change.implementationSteps = stepsToSave(steps);
     try {
       // A new status or visit time is emailed to everyone assigned; say who got it, and in red who didn't.
       const { meta } = await updateStatus.mutateAsync(change);
-      const saved = statusChanged ? `${record.name || "Form"} is now in ${STATUSES[status].label}.` : "Update saved.";
+      const saved = statusChanged ? `${record.name || "Form"} is now in ${STATUSES[status].label}.` : onlyStepDays ? "Step dates saved." : "Update saved.";
       const email = emailSummary(saved, meta?.email);
       if (email.problem) toast.error(email.text, { duration: 10_000 });
       else toast.success(email.text);
@@ -144,7 +148,7 @@ function StatusUpdate({ record }) {
         <TimeSelect id={`visit-start-${record.id}`} value={time} onChange={changeStartTime} />
         <TimeSelect id={`visit-end-${record.id}`} value={endTime} onChange={setEndTime} after={time} optional placeholder="No end time" />
       </div>
-      {status === "implementation" && <ImplementationSteps steps={steps} onChange={setSteps} />}
+      {status === "implementation" && <ImplementationSteps steps={steps} savedSteps={savedSteps} onChange={setSteps} />}
       <Textarea
         rows={2}
         className="bg-background"
@@ -160,8 +164,11 @@ function StatusUpdate({ record }) {
   );
 }
 
-// What the API needs for each step: its id (when it is already saved), the title, and done or not.
-const stepsToSave = (steps) => steps.map(({ id, title, done }) => ({ id, title, done }));
+// What the API needs for each step: its id (when it is already saved), the title, done or not, and
+// for a done step the day it was done (null for a step just ticked: the API puts today).
+const stepsToSave = (steps) => steps.map(({ id, title, done, doneAt }) => ({ id, title, done, doneAt: done ? (doneAt ?? null) : null }));
+const withoutDays = (steps) => stepsToSave(steps).map(({ doneAt, ...step }) => step);
+const sameSteps = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 
 // The five statuses as buttons that wrap evenly (3 + 2 in the panel). The chosen one is filled in.
 function StatusPicker({ value, onChange }) {
@@ -191,8 +198,9 @@ function StatusPicker({ value, onChange }) {
 }
 
 // Going live can take several visits, so the implementation is a checklist of steps,
-// ticked off one by one. Changes here are saved with "Save update".
-function ImplementationSteps({ steps, onChange }) {
+// ticked off one by one. Each done step shows the day it was done, which can be changed (StepDay).
+// Changes here are saved with "Save update". `savedSteps` is the checklist as saved.
+function ImplementationSteps({ steps, savedSteps, onChange }) {
   const [newTitle, setNewTitle] = useState("");
   const progress = countSteps(steps);
   const canAdd = newTitle.trim().length >= 2;
@@ -204,8 +212,21 @@ function ImplementationSteps({ steps, onChange }) {
     setNewTitle("");
   }
 
+  // Ticking a step again before saving brings back the day it was done, if it was; a new tick gets
+  // today when saved (until then the day reads "Today").
   function toggleStep(index) {
-    onChange(steps.map((step, i) => (i === index ? { ...step, done: !step.done } : step)));
+    onChange(
+      steps.map((step, i) => {
+        if (i !== index) return step;
+        if (step.done) return { ...step, done: false, doneAt: null };
+        const saved = savedSteps.find((old) => old.id && old.id === step.id && old.done);
+        return { ...step, done: true, doneAt: saved?.doneAt ?? null };
+      }),
+    );
+  }
+
+  function changeDay(index, doneAt) {
+    onChange(steps.map((step, i) => (i === index ? { ...step, doneAt } : step)));
   }
 
   function removeStep(index) {
@@ -250,7 +271,7 @@ function ImplementationSteps({ steps, onChange }) {
                 <input type="checkbox" checked={step.done} onChange={() => toggleStep(index)} className="size-4 shrink-0 accent-status-implementation" />
                 <span className={cn("min-w-0 text-sm wrap-break-word", step.done && "text-muted-foreground line-through")}>{step.title}</span>
               </label>
-              {step.done && step.doneAt && <span className="shrink-0 text-xs text-status-implementation-ink">{formatDate(step.doneAt, "d MMM")}</span>}
+              {step.done && <StepDay step={step} onChange={(doneAt) => changeDay(index, doneAt)} />}
               <button
                 type="button"
                 onClick={() => removeStep(index)}
@@ -283,6 +304,50 @@ function ImplementationSteps({ steps, onChange }) {
         </Button>
       </div>
     </div>
+  );
+}
+
+// The day a done step was done, as a small chip ("📅 18 Nov") that opens the date picker: today or
+// an earlier day. The picker is the browser's own (the same as the visit date's): an invisible date
+// input over the chip, so a tap or a click opens it, and the keyboard works too.
+function StepDay({ step, onChange }) {
+  const today = dayKey(new Date());
+  const value = step.doneAt ? dayKey(step.doneAt) : today;
+  const thisYear = !step.doneAt || formatDate(step.doneAt, "yyyy") === today.slice(0, 4);
+  const label = step.doneAt ? formatDate(step.doneAt, thisYear ? "d MMM" : "d MMM yyyy") : "Today";
+
+  function pick(day) {
+    // Noon in Dhaka, so the day is the same whatever the time zone it is read in.
+    if (day && day <= today && day !== value) onChange(dhakaDateTime(day, "12:00"));
+  }
+
+  return (
+    <span className="relative shrink-0">
+      <input
+        type="date"
+        required
+        max={today}
+        value={value}
+        onChange={(event) => pick(event.target.value)}
+        onClick={(event) => {
+          try {
+            event.currentTarget.showPicker(); // Chrome opens it only from its icon otherwise
+          } catch {
+            // an older browser: it opens the picker by itself, or lets the day be typed
+          }
+        }}
+        aria-label={`Day "${step.title}" was done`}
+        title="Change the day it was done"
+        className="peer absolute inset-0 size-full cursor-pointer opacity-0"
+      />
+      <span
+        aria-hidden="true"
+        className="pointer-events-none inline-flex items-center gap-1 rounded-md border border-transparent px-1.5 py-0.5 text-xs font-medium whitespace-nowrap text-status-implementation-ink tabular-nums transition-colors peer-hover:border-status-implementation/40 peer-hover:bg-status-implementation-soft peer-focus-visible:ring-2 peer-focus-visible:ring-ring/50"
+      >
+        <CalendarDays className="size-3" />
+        {label}
+      </span>
+    </span>
   );
 }
 
